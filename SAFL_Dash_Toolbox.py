@@ -5,44 +5,45 @@ import dash_ag_grid as dag
 
 def value_display(title,id,**kwargs):
 
-    if 'className' in kwargs: 
-        val_disp = html.Div(children=[
+    val_disp = html.Div(children=[
         html.Div(children=[
             html.Label(f'{title}:')
         ],style={'display':'flex',
-                     'width': '50%',
-                     'justifyContent': 'right',
-                     "fontWeight": "bold",
-                     "marginRight":"10px",
-                     'alignItems':'center'}),
+                    'width': '50%',
+                    'justifyContent': 'right',
+                    "fontWeight": "bold",
+                    "marginRight":"10px",
+                    'alignItems':'center'}),
         html.Div(children=[
-            html.Label(id=id,className=kwargs['className'])
+            html.Label(id=id)
         ],style={'display':'flex',
-                     'width': '50%',
-                     'justifyContent': 'left',
-                     "marginRight":"10px",
-                     'alignItems':'center'})
-        ],className='divHorizontal')
-    else:
-        val_disp = html.Div(children=[
-            html.Div(children=[
-                html.Label(f'{title}:')
-            ],style={'display':'flex',
-                     'width': '50%',
-                     'justifyContent': 'right',
-                     "fontWeight": "bold",
-                     "marginRight":"10px",
-                     'alignItems':'center'}),
-            html.Div(children=[
-                html.Label(id=id)
-            ],style={'display':'flex',
-                     'width': '50%',
-                     'justifyContent': 'left',
-                     "marginRight":"10px",
-                     'alignItems':'center'})
-        ],className='divHorizontal')
+                    'width': '50%',
+                    'justifyContent': 'left',
+                    "marginRight":"10px",
+                    'alignItems':'center'})
+    ],style={'display':'flex','flexdirection':'row','alignItems':'center','justifyContent':'center'})
 
     return val_disp
+
+def indicator_display(title,id):
+    div = html.Div(children=[
+        html.Div(children=[
+            html.Label(f'{title}:',style={'margin':'5px'})
+        ],style={"display":"flex",'width': '50%','justify-content':'right',"fontWeight": "bold","marginRight":"10px","align-items":"center"}),
+        html.Div(children=[
+            daq.Indicator(id=id,color="#FF0000")
+        ],style={'width': '50%',"display":"flex","justify-content":"left","align-items":"bottom"})        
+    ],style={'display':'flex','flexDirection':'row'})
+
+    return div
+
+def update_indicator_color(value,true_color,false_color):
+    if value:
+        color = true_color
+    else:
+        color = false_color
+
+    return color
 
 def table_row(title,value,**kwargs):
 
