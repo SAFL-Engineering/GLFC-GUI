@@ -18,7 +18,6 @@ while not beckhoff_plc.data:
 if i != 0:
     print('Message Received!')
 
-
 credentials = creds.credentials
 token       = creds.token
 
