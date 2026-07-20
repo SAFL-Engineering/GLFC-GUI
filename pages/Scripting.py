@@ -13,40 +13,68 @@ dash.register_page(__name__)
 layout = html.Div(children=[
     # html.Div(id='ctr-echo-table',className='divBorder'),                
     html.Div(children=[
-        html.H3('Control Inputs'),
+        html.H3('Add Tasks to Script'),
         html.Label('Enter a Name for your Script:'),
         dcc.Input(id='script-name-input',type='text',debounce=True),
-        dcc.Button('CMDADD',id='CMDADD-true'),
-        html.Br(),
-        html.Label('Enter Acquisition Spacing (mm):'),
-        dcc.Input(id='acqres-input',type='number',debounce=True),
-        html.Br(),
-        html.Label('Set X Position Instr:'),
-        dcc.Input(id='setxpos',type='number',debounce=True),
-        html.Br(),
-        html.Label('Set X Velocity Instr:'),
-        dcc.Input(id='setxvel',type='number',debounce=True),
-        html.Button(
-            html.Img(src=dash.get_asset_url('Green_LED_On.png'),style={'height':'30px','width':'30px'}),id='green-led',className='htmlButton'
-        )
 
+        html.Label('Select a Command Type:'),
+        dcc.Dropdown(options=['Null Instruction','Pause and Wait for Button Press','Go to Absolute Position','Move Relative Distance'],value='Go to Absolute Position',id='motion-command'),
 
+        html.Div(children=[
+            html.Div(children=[
+                html.Label('Set X Target Position:'),
+                dcc.Input(id='setxpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+            html.Div(children=[
+                html.Label('Set X Target Velocity:'),
+                dcc.Input(id='setxvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+        ],className='divHorizontal'),
 
-    
+        html.Div(children=[
+            html.Div(children=[
+                html.Label('Set Y Target Position:'),
+                dcc.Input(id='seyxpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+            html.Div(children=[
+                html.Label('Set Y Target Velocity:'),
+                dcc.Input(id='setyvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+        ],className='divHorizontal'),
+        
+        html.Div(children=[
+            html.Div(children=[
+                html.Label('Set Z Target Position:'),
+                dcc.Input(id='setzpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+            html.Div(children=[
+                html.Label('Set Z Target Velocity:'),
+                dcc.Input(id='setzvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+        ],className='divHorizontal'),
+
+        html.Label('Set Pause Time Before Next Move (milliseconds):'),
+        dcc.Input(id='setpause',type='number',debounce=True,step=1),
+
+        html.Label('Add a Comment for this instruction (optional)'),
+        dcc.Input(id='comment',type='text',debounce=True),
+
+        dcc.Button('CMDADD',id='CMDADD',className='button'),
+        dcc.Button('CMDCLR',id='CMDCLR',className='button'),
+        dcc.Button('CMDDEL',id='CMDDEL',className='button'),
+        dcc.Checklist(options=['Loop Script'],id='CMDLOOP'),
+        html.Label('Select which Basin this Script should be run in:'),
+        dcc.Dropdown(id='BASINCTR',options=['Basin A','Basin B']),
+        dcc.Button('CMDRUN',id='CMDRUN',className='button'),
+        html.Label('How Many Times to Repeat this Script?'),
+        dcc.Input(id='SCRIPTITERATIONS',type='number'),
+       
+    ],className='divBorder'),
+
+    html.Div(children = [
+        html.H3('File Operations'),
+        dcc.Button('CMDSCRIPTDEL',id='CMDSCRIPTDEL',className='button'),
+        dcc.Button('CMDSCRIPTWRITE',id='CMDSCRIPTWRITE',className='button'),
+        dcc.Button('CMDSCRIPTREAD',id='CMDSCRIPTREAD',className='button'),
+        dcc.Button('CMDREQLIST',id='CMDREQLIST',className='button'),
+        dcc.Button('CMDREQSCRIPT',id='CMDREQSCRIPT',className='button')
     ],className='divBorder')
 ],className='divHorizontal')
 
-
-# @callback(Input('green-led','n_clicks'))
-# def green_led(n):
-#     print(f'Number of Clicks on the Green LED: {n}')
-
-# @callback(Output('ctr-echo-table','children'              ),
-#           Input('interval-timer','n_intervals'))
-# def update_ctr_echo_values(n):
-#     updated_table = safl.json_table(title=['MOTION/CTR_ECHO'],json_dict=beckhoff_plc.data['MOTION/CTR_ECHO'])
-
-#     return updated_table
 
 @callback(Input('script-name-input','value'),
           prevent_intiail_call=True)
@@ -63,7 +91,7 @@ def update_script_name(value):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-@callback(Input('CMDADD-true','n_clicks'))
+@callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
     del new_ctr_struct['timestamp']
@@ -75,24 +103,16 @@ def send_CMDADD(n):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-@callback(Input('acqres-input','value'),
-          prevent_intiail_call=True)
-def send_acqres(value):
-    new_struct = beckhoff_plc.data['DAQ/CTR_ECHO']
-    del new_struct['timestamp']
-    new_struct['DAQACQRES'] = value
-    beckhoff_plc.client.publish(topic='DAQ/CTR',payload=json.dumps(new_struct))
-
 @callback(Input('setxpos','value'))
 def send_new_xpos_instr(value):
     new_struct = beckhoff_plc.data['MOTION/INSTR_ECHO']
     del new_struct['timestamp']
     new_struct['SetXPosition'] = float(value)
-    beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_struct))
+    beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_struct))
 
 @callback(Input('setxvel','value'))
 def send_new_xvel_instr(value):
     new_struct = beckhoff_plc.data['MOTION/INSTR_ECHO']
     del new_struct['timestamp']
     new_struct['SetXVelocity'] = int(value)
-    beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_struct))
+    beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_struct))

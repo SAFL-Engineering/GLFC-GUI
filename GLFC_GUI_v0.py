@@ -47,10 +47,11 @@ app.layout = html.Div(children= [
         html.Div(children=[
             html.Div(
                 dcc.Link(
-                    dcc.Button(f"{page['name']}",className='button') ,href=page["relative_path"]
+                    dcc.Button(f"{page['name']}",className='custom-btn') ,href=page["relative_path"]
                     )
             ) for page in dash.page_registry.values()
         ],className='divHorizontal'),
+        html.Br(),
         dash.page_container])
 ],className='divOverall')
 

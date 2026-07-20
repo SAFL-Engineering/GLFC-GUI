@@ -89,6 +89,23 @@
   align-Items:top;
 }
 
+.divJogButtons {
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.divHorizontalBorder {
+  display:flex;
+  flex-direction: row;
+  border: 1px solid black;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 2px;
+  min-width: 400px;
+  justify-content: center;
+}
+
 .divHorizontal_fullWidth {
   display:flex;
   flex-direction:row;
@@ -112,6 +129,40 @@
 .button{
   margin: 2px;
   min-width: 200px;
+}
+
+/* Base button state */
+.custom-btn {
+    background-color: #4b6573; /* Success Green */
+    color: white;
+    border: 2px solid transparent;
+    margin:2px;
+    /* padding: 12px 24px; */
+    /* font-size: 1rem; */
+    /* font-weight: 600; */
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    min-width: 200px;
+}
+
+/* Hover state (mouse pointer over button) */
+.custom-btn:hover {
+    background-color: #31434b; /* Darker green */
+    color:white;
+}
+
+/* Active state (while the button is being clicked) */
+.custom-btn:active {
+    transform: scale(0.98); /* Slight click shrink effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus state (accessibility navigation via Keyboard Tab) */
+.custom-btn:focus {
+    outline: 5px solid #7e701e;
+    /* border-color: #1e7e23; */
 }
 
 .htmlButton{

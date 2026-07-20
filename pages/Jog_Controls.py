@@ -25,17 +25,17 @@ layout = html.Div([
     create_momentary_button(1, "Jog X-"),
     html.Label(id='current-x-pos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px'}),
     create_momentary_button(2, "Jog X+")
-    ],className='divHorizontal'),
+    ],className='divJogButtons'),
     html.Div(children = [
     create_momentary_button(3, "Jog Y-"),
     html.Label(id='current-y-pos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px'}),
     create_momentary_button(4, "Jog Y+")
-    ],className='divHorizontal'),
+    ],className='divJogButtons'),
     html.Div(children = [
     create_momentary_button(5, "Jog Z-"),
     html.Label(id='current-z-pos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px'}),
     create_momentary_button(6, "Jog Z+")
-    ],className='divHorizontal'),
+    ],className='divJogButtons'),
     safl.value_display(title='X Range',            id='x-hardstops'),
     safl.value_display(title='Y Range',            id='y-hardstops'),
     safl.value_display(title='Z Range',            id='z-hardstops'),
