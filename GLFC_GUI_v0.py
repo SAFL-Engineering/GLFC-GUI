@@ -37,7 +37,7 @@ app.layout = html.Div(children= [
     dcc.Interval(id='interval-timer',interval=update_interval,n_intervals=0),
     dcc.Store(id='stored_variables',data={'last-loop-time':datetime.datetime.now()}),
     html.Img(src=dash.get_asset_url("FishPass_Banner.jpeg"),style={"display":"block","marginLeft":"auto","marginRight":"auto","width":"30%"}),
-    html.H1("Data Carriage HMI",style={'textAlign':'center'}),
+    html.H1("Data Carriage Control Interface",style={'textAlign':'center'}),
     safl.value_display(title="Connected Users",id='connected-users-label'),
     safl.value_display(title='Time since last Message',           id='last-message-time'    ),
     safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
