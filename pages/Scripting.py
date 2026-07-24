@@ -68,33 +68,72 @@ layout = html.Div(children=[
             html.H3('File Operations'),
             html.Label('Enter a Name for your Script:'),
             dcc.Input(id='script-name-input',type='text',debounce=True),
-            html.Br(),
             dcc.Button('Save queue as script file on PLC',id='CMDSCRIPTWRITE',className='button'),
-            dcc.Button('CMDSCRIPTDEL',id='CMDSCRIPTDEL',className='button'),            
-            dcc.Button('CMDSCRIPTREAD',id='CMDSCRIPTREAD',className='button'),
-            dcc.Button('Request List of Scripts from PLC',id='CMDREQLIST',className='button'),
-            dcc.Button('CMDREQSCRIPT',id='CMDREQSCRIPT',className='button')
+            html.Br(),
+            dcc.Button('Request List of Script Files from PLC',id='CMDREQLIST',className='button'),
+            dcc.Dropdown(id="script-list"),
+            html.Br(),
+            html.Label('Currently Selected Script:',id='active-script-1'),
+            dcc.Button('Set Selected Script as Active',id='CMDSCRIPTREAD',className='button'),
+            dcc.Button('View Contents of Selected Script',id='CMDREQSCRIPT',className='button'),
+            dcc.Button('Delete Currently Selected Script',id='CMDSCRIPTDEL',className='button')
         ],className='divBorder'),
         html.Div(children=[
             html.H3('Run Script'),
+            html.Label('Currently Active Script:',id='active-script'),
             html.Label('Select which Basin this Script should be run in:'),
             dcc.Dropdown(id='BASINCTR',options=['Basin A','Basin B']),
-            dcc.Checklist(options=['Loop Script'],id='CMDLOOP'),
-            html.Label('How Many Times to Repeat this Script?'),
-            dcc.Input(id='SCRIPTITERATIONS',type='number'),
             html.Br(),
-            dcc.Button('CMDRUN',id='CMDRUN',className='button')
+            html.Div(children=[
+                dcc.Checklist(options=['Loop Script Indefinitely'],id='CMDLOOP'),
+            ],className='divHorizontal'),
+            html.Div(children=[html.B('OR')],className='divHorizontal'),
+            html.Label('Specify Many Times to Repeat this Script:'),
+            dcc.Input(id='SCRIPTITERATIONS',type='number',min=1),
+            html.Br(),
+            dcc.Button('Run Active Script',id='CMDRUN',className='button')
         ],className='divBorder')
     ])
 ],className='divHorizontal')
 
+@callback(Output('active-script','children'),
+          Output('active-script-1','children'),
+          Input('interval-timer','n_intervals'))
+def update_active_script_label(n):
+    script_name = beckhoff_plc.data['MOTION/CTR_ECHO']['SCRIPTNAME']
+    label = 'Currently Selected Script:  ' 
+    new = html.Div(children= [
+        html.B(label),
+        html.Div(script_name,style={'margin-left':'5px'})
+    ],style={
+        'display':'flex',
+        'flexdirection':'row',
+        'backgroundColor':"#C7C5C5",
+        'borderRadius':'2px',
+        'padding':'2px'
+    })
 
-@callback(Input('script-name-input','value'),
-          prevent_intiail_call=True)
+    new2 = html.Div(children= [
+            html.B('Currently Active Script:  '),
+            html.Div(script_name,style={'margin-left':'5px'})
+        ],style={
+            'display':'flex',
+            'flexdirection':'row',
+            'backgroundColor':"#C7C5C5",
+            'borderRadius':'2px',
+            'padding':'2px'
+        })
+    return new2, new
+
+
+@callback(Input('script-name-input','value'))
 def update_script_name(value):
     # Start with the current Control Struct Echo
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
-    del new_ctr_struct['timestamp']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
     #change the value in the struct for scriptname
     new_ctr_struct['SCRIPTNAME'] = value
     # new_ctr_struct = {'CTR':new_ctr_struct}
@@ -111,7 +150,10 @@ def send_CMDADD(n):
 
     # Build the CTR Structure to send the CMDADD command
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
-    del new_ctr_struct['timestamp']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
 
     new_ctr_struct['CMDADD'] = True
     # Convert the Dict to a properly JSON formatted string
@@ -133,6 +175,41 @@ def add_value(value):
 
     new_command['MotionCommand'] = command
     print(new_command)
+
+@callback(Input("BASINCTR","value"))
+def set_basin(value):
+        # Build the CTR Structure to send the CMDADD command
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+
+    if value=='Basin A':
+        command = True
+    else:
+        command = False
+
+    new_ctr_struct['BASINCTR'] = command
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+@callback(Input("CMDLOOP",'value'))
+def loop(val):
+
+            # Build the CTR Structure to send the CMDADD command
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    if len(val) > 0:
+        new_ctr_struct['CMDLOOP'] = True
+    else:
+        new_ctr_struct['CMDLOOP'] = False
+
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
 @callback(Input('setxpos','value'))
 def add_value(value):
@@ -168,10 +245,18 @@ def add_value(value):
 
 @callback(Input('CMDDEL','n_clicks'),
           Input('CMDCLR','n_clicks'),
-          Input('CMDREQLIST','n_clicks'))
-def delete_task(bt1,bt2,bt3):
+          Input('CMDREQLIST','n_clicks'),
+          Input('CMDSCRIPTWRITE','n_clicks'),
+          Input("CMDSCRIPTDEL",'n_clicks'),
+          Input("CMDSCRIPTREAD","n_clicks"),
+          Input("CMDREQSCRIPT","n_clicks"),
+          Input("CMDRUN","n_clicks"))
+def delete_task(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
-    del new_ctr_struct['timestamp']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
 
     which_button = dash.ctx.triggered_id
 
@@ -182,3 +267,14 @@ def delete_task(bt1,bt2,bt3):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
+@callback(Input("SCRIPTITERATIONS","value"))
+def update_script_iterations(val):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['SCRIPTITERATIONS'] = val
+
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
