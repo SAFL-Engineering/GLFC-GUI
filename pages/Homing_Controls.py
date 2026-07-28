@@ -18,34 +18,34 @@ pos_table_df = pd.DataFrame(pos_table_dict)
 
 layout = html.Div(children=[
         html.Div(children=[
-            dcc.Button("STOP All Axes",className='button'),
-            dcc.Button("ENABLE All Axes",className='button'),
-            dcc.Button("RESET All Axes",className='button'),
+            dcc.Button("STOP All Axes",className='button',  id='AXESHALT'),
+            dcc.Button("ENABLE All Axes",className='button',id='AXESEN'),
+            dcc.Button("RESET All Axes",className='button', id='AXESRESET'),
         ],className='divHorizontal'),
         html.Br(),
         html.Div(children=[
         html.Div(children=[
             html.H2(children='Homing Controls'),
-            dcc.Button("Home All Axes",id='home-all-button',className='button'),
-            dcc.Button("Home X Axis",id='home-x-button',className='button'),
-            dcc.Button("Home Y Axis",id='home-y-button',className='button'),
-            dcc.Button("Home Z Axis",id='home-z-button',className='button')
+            dcc.Button("Home All Axes",className='button',  id='CMDHOME'),
+            dcc.Button("Home X Axis",className='button',    id='CMDHOMEX'),
+            dcc.Button("Home Y Axis",className='button',    id='CMDHOMEY'),
+            dcc.Button("Home Z Axis",className='button',    id='CMDHOMEZ')
         ],className='divBorder'),
         html.Div(children=[
             html.H2(children='Manually Set Position'),
-            dcc.Button(children=['Couple/Decouple X Motors'],id='couple-decouple-button'),
+            dcc.Button(children=['Couple/Decouple X Motors'],id='CMDCOUPLE'),
             safl.indicator_display(title='X Motors Coupled',id='x-coupled-bool'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True,min=0,max=100,step=0.01),
-                dcc.Button("Set X Position",id='set-x-pos-button',className='button')
+                dcc.Input(type='number',debounce=True,step=0.1,id='POSX',value=0),
+                dcc.Button("Set X Position",id='SETXPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True),
-                dcc.Button("Set Y Position",id='set-y-pos-button',className='button')
+                dcc.Input(type='number',debounce=True,step=0.1,id='POSY',value=0),
+                dcc.Button("Set Y Position",id='SETYPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True),
-                dcc.Button("Set Z Position",id='set-z-pos-button',className='button')
+                dcc.Input(type='number',debounce=True,step=0.1,id='POSZ',value=0),
+                dcc.Button("Set Z Position",id='SETZPOS',className='button')
             ],className='divHorizontal')
         ],className='divBorder')
 
@@ -81,7 +81,7 @@ layout = html.Div(children=[
           prevent_initial_call =True)
 def update_homing(n):
 
-    return safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['xCoupled']         ,"#DA2020","#9B9B9B")
+    return safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['xCoupled'],"#DA2020","#9B9B9B")
 
 @callback(Output('pos-vel-extents-table','data'),
           Output('current-basin-lbl','children'),
@@ -100,3 +100,57 @@ def update_table(n):
              {'Axis':'Y','Position':f"{data['yPosOut']:.1f} mm",'Basin Min':f"{data['basinyMin']:.1f} mm",'Velocity':f"{data['yVelOut']:.1f} mm/s",'Basin Max':f"{data['basinyMax']:.1f} mm"},\
              {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{0:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{data['HardStopLocations'][2]:.1f} mm"}],\
              selected_basin
+
+@callback(Input('AXESHALT','n_clicks'),
+          Input('AXESEN','n_clicks'),
+          Input('AXESRESET','n_clicks'),
+          Input('CMDHOME','n_clicks'),
+          Input('CMDHOMEX','n_clicks'),
+          Input('CMDHOMEY','n_clicks'),
+          Input('CMDHOMEZ','n_clicks'),
+          Input('CMDCOUPLE','n_clicks'),
+          Input('SETXPOS','n_clicks'),
+          Input('SETYPOS','n_clicks'),
+          Input('SETZPOS','n_clicks'))
+def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8,bt9,bt10,bt11):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+    
+    which_button = dash.ctx.triggered_id
+
+    if which_button == 'CMDCOUPLE': # CMD Couple toggles boolean value. 
+        new_ctr_struct['CMDCOUPLE'] =  not new_ctr_struct['CMDCOUPLE']
+    else:
+        new_ctr_struct[which_button] = True  # All other set to True and the PLC will set back to False.
+        # Convert the Dict to a properly JSON formatted string
+    json_ctr = json.dumps(new_ctr_struct)
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
+
+@callback(Input('POSX','value'),
+          Input('POSY','value'),
+          Input('POSZ','value'))
+def update_xyz_set(x,y,z):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    which_value = dash.ctx.triggered_id
+
+    if which_value == 'POSX':
+        new_ctr_struct['POSX'] = x
+    elif which_value == 'POSY':
+        new_ctr_struct['POSY'] = y
+    elif which_value == 'POSZ':
+        new_ctr_struct['POSZ'] = z
+
+    json_ctr = json.dumps(new_ctr_struct)
+        
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)

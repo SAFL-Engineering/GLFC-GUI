@@ -4,7 +4,7 @@ from Beckhoff_PLC import beckhoff_plc
 import SAFL_Dash_Toolbox as safl
 import time
 
-dash.register_page(__name__)
+dash.register_page(__name__,title='View PLC Comms')
 
 
 layout = html.Div(id='mqtt_topics')

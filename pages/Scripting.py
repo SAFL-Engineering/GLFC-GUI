@@ -82,7 +82,7 @@ layout = html.Div(children=[
             html.H3('Run Script'),
             html.Label('Currently Active Script:',id='active-script'),
             html.Label('Select which Basin this Script should be run in:'),
-            dcc.Dropdown(id='BASINCTR',options=['Basin A','Basin B']),
+            dcc.Dropdown(id='BASINCTR',options=['Basin A','Basin B'],persistence=True,persistence_type='local'),
             html.Br(),
             html.Div(children=[
                 dcc.Checklist(options=['Loop Script Indefinitely'],id='CMDLOOP'),
@@ -129,7 +129,7 @@ def update_active_script_label(n):
 @callback(Input('script-name-input','value'))
 def update_script_name(value):
     # Start with the current Control Struct Echo
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
@@ -149,7 +149,7 @@ def send_CMDADD(n):
     beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_command))
 
     # Build the CTR Structure to send the CMDADD command
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
@@ -179,7 +179,7 @@ def add_value(value):
 @callback(Input("BASINCTR","value"))
 def set_basin(value):
         # Build the CTR Structure to send the CMDADD command
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
@@ -198,7 +198,7 @@ def set_basin(value):
 def loop(val):
 
             # Build the CTR Structure to send the CMDADD command
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
@@ -252,7 +252,7 @@ def add_value(value):
           Input("CMDREQSCRIPT","n_clicks"),
           Input("CMDRUN","n_clicks"))
 def delete_task(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
@@ -269,7 +269,7 @@ def delete_task(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
 
 @callback(Input("SCRIPTITERATIONS","value"))
 def update_script_iterations(val):
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
