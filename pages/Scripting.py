@@ -9,6 +9,7 @@ new_command = beckhoff_plc.data['MOTION/INSTR_ECHO']
 del new_command['timestamp']
 
 new_command['MotionCommand'] = 2
+new_command['setxvel'] = 10
 
 dash.register_page(__name__)
 
@@ -17,7 +18,7 @@ dash.register_page(__name__)
 layout = html.Div(children=[
     # html.Div(id='ctr-echo-table',className='divBorder'),                
     html.Div(children=[
-        html.H3('Add Tasks to Queue'),
+        html.H3('Add Instructions to Script'),
 
         html.Label('Select a Command Type:'),
         dcc.Dropdown(options=['Null Instruction','Pause and Wait for Button Press','Go to Absolute Position','Move Relative Distance'],value='Go to Absolute Position',id='motion-command'),
@@ -28,7 +29,7 @@ layout = html.Div(children=[
                 dcc.Input(id='setxpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set X Target Velocity:'),
-                dcc.Input(id='setxvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+                dcc.Input(id='setxvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
         html.Div(children=[
@@ -37,7 +38,7 @@ layout = html.Div(children=[
                 dcc.Input(id='setypos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Y Target Velocity:'),
-                dcc.Input(id='setyvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+                dcc.Input(id='setyvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
         ],className='divHorizontal'),
         
         html.Div(children=[
@@ -46,7 +47,7 @@ layout = html.Div(children=[
                 dcc.Input(id='setzpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Z Target Velocity:'),
-                dcc.Input(id='setzvel',type='number',debounce=True,step=1)],style={'margin':'10px'}),
+                dcc.Input(id='setzvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
         html.Label('Set Pause Time Before Next Move (milliseconds):'),
@@ -56,9 +57,9 @@ layout = html.Div(children=[
         dcc.Input(id='comment',type='text',debounce=True),
         html.Br(),
 
-        dcc.Button('Add task to the queue',id='CMDADD',className='button'),
-        dcc.Button('Delete the last task from the queue',id='CMDDEL',className='button'),
-        dcc.Button('Clear the currently loaded queue',id='CMDCLR',className='button')
+        dcc.Button('Add Instruction to the Script',id='CMDADD',className='button'),
+        dcc.Button('Delete the last task from the Script',id='CMDDEL',className='button'),
+        dcc.Button('Clear the currently loaded Script',id='CMDCLR',className='button')
         
         
        
@@ -66,9 +67,9 @@ layout = html.Div(children=[
     html.Div(children=[
         html.Div(children = [
             html.H3('File Operations'),
-            html.Label('Enter a Name for your Script:'),
+            html.Label('Enter a Name for your Script (no spaces or < > : " / \\ | ? *):'),
             dcc.Input(id='script-name-input',type='text',debounce=True),
-            dcc.Button('Save queue as script file on PLC',id='CMDSCRIPTWRITE',className='button'),
+            dcc.Button('Save Script to File on PLC',id='CMDSCRIPTWRITE',className='button'),
             html.Br(),
             dcc.Button('Request List of Script Files from PLC',id='CMDREQLIST',className='button'),
             dcc.Dropdown(id="script-list"),
@@ -143,6 +144,84 @@ def update_script_name(value):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
+
+# @callback(Input('motion-command','value'))
+# def add_value(value):
+#     if value=='Pause and Wait for Button Press':
+#         command = 1
+#     elif value=='Go to Absolute Position':
+#         command = 2
+#     elif value=='Move Relative Distance':
+#         command = 3
+#     else:
+#         command = 0
+
+#     new_command['MotionCommand'] = command
+#     print(new_command)
+
+# @callback(Input('setxpos','value'))
+# def add_value(value):
+#     new_command['SetXPosition'] = value
+
+# @callback(Input('setxvel','value'))
+# def add_value(value):
+#     new_command['SetXVelocity'] = value
+
+# @callback(Input('setypos','value'))
+# def add_value(value):
+#     new_command['SetYPosition'] = value
+
+# @callback(Input('setyvel','value'))
+# def add_value(value):
+#     new_command['SetYVelocity'] = value
+
+# @callback(Input('setzpos','value'))
+# def add_value(value):
+#     new_command['SetZPosition'] = value
+
+# @callback(Input('setzvel','value'))
+# def add_value(value):
+#     new_command['SetZVelocity'] = value
+
+# @callback(Input('setpause','value'))
+# def add_value(value):
+#     new_command['PauseTime'] = value
+
+# @callback(Input('comment','value'))
+# def add_value(value):
+#     new_command['Comment'] = value
+
+@callback(Input('motion-command','value'),
+          Input('setxvel','value'),
+          Input('setyvel','value'),
+          Input('setzvel','value'))
+def add_instr(motion_command,setxvel,setyvel,setzvel):
+    
+    # Build the INSTR Structure to send the CMDADD command
+    new_instr_struct = beckhoff_plc.data['MOTION/INSTR_ECHO'].copy()
+    try:
+        del new_instr_struct['timestamp']
+    except:
+        pass
+
+    if motion_command=='Pause and Wait for Button Press':
+        command = 1
+    elif motion_command=='Go to Absolute Position':
+        command = 2
+    elif motion_command=='Move Relative Distance':
+        command = 3
+    else:
+        command = 0
+
+    new_instr_struct['MotionCommand'] = command
+
+    new_instr_struct['SetXVelocity']= setxvel
+    new_instr_struct['SetYVelocity']= setyvel
+    new_instr_struct['SetZVelocity']= setzvel
+
+    # Send the json array with the new command 
+    beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_instr_struct))
+
 @callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):
     # Send the json array with the new command 
@@ -162,19 +241,7 @@ def send_CMDADD(n):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-@callback(Input('motion-command','value'))
-def add_value(value):
-    if value=='Pause and Wait for Button Press':
-        command = 1
-    elif value=='Go to Absolute Position':
-        command = 2
-    elif value=='Move Relative Distance':
-        command = 3
-    else:
-        command = 0
 
-    new_command['MotionCommand'] = command
-    print(new_command)
 
 @callback(Input("BASINCTR","value"))
 def set_basin(value):
@@ -211,37 +278,6 @@ def loop(val):
 
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
-@callback(Input('setxpos','value'))
-def add_value(value):
-    new_command['SetXPosition'] = value
-
-@callback(Input('setxvel','value'))
-def add_value(value):
-    new_command['SetXVelocity'] = value
-
-@callback(Input('setypos','value'))
-def add_value(value):
-    new_command['SetYPosition'] = value
-
-@callback(Input('setyvel','value'))
-def add_value(value):
-    new_command['SetYVelocity'] = value
-
-@callback(Input('setzpos','value'))
-def add_value(value):
-    new_command['SetZPosition'] = value
-
-@callback(Input('setzvel','value'))
-def add_value(value):
-    new_command['SetZVelocity'] = value
-
-@callback(Input('setpause','value'))
-def add_value(value):
-    new_command['PauseTime'] = value
-
-@callback(Input('comment','value'))
-def add_value(value):
-    new_command['Comment'] = value
 
 @callback(Input('CMDDEL','n_clicks'),
           Input('CMDCLR','n_clicks'),
