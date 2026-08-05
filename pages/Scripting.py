@@ -26,7 +26,7 @@ layout = html.Div(children=[
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set X Target Position:'),
-                dcc.Input(id='setxpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+                dcc.Input(id='setxpos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set X Target Velocity:'),
                 dcc.Input(id='setxvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
@@ -35,7 +35,7 @@ layout = html.Div(children=[
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set Y Target Position:'),
-                dcc.Input(id='setypos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+                dcc.Input(id='setypos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Y Target Velocity:'),
                 dcc.Input(id='setyvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
@@ -44,7 +44,7 @@ layout = html.Div(children=[
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set Z Target Position:'),
-                dcc.Input(id='setzpos',type='number',debounce=True,step=0.1)],style={'margin':'10px'}),
+                dcc.Input(id='setzpos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Z Target Velocity:'),
                 dcc.Input(id='setzvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
@@ -54,7 +54,7 @@ layout = html.Div(children=[
         dcc.Input(id='setpause',type='number',debounce=True,step=1,min=0,value=0),
 
         html.Label('Add a Comment for this instruction (optional)'),
-        dcc.Input(id='comment',type='text',debounce=True),
+        dcc.Input(id='comment',type='text',debounce=True,value=""),
         html.Br(),
 
         dcc.Button('Add Instruction to the Script',id='CMDADD',className='button'),
@@ -192,10 +192,15 @@ def update_script_name(value):
 #     new_command['Comment'] = value
 
 @callback(Input('motion-command','value'),
+          Input('setxpos','value'),
           Input('setxvel','value'),
+          Input('setypos','value'),
           Input('setyvel','value'),
-          Input('setzvel','value'))
-def add_instr(motion_command,setxvel,setyvel,setzvel):
+          Input('setzpos','value'),
+          Input('setzvel','value'),
+          Input('setpause','value'),
+          Input('comment','value'))
+def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,setpause,comment):
     
     # Build the INSTR Structure to send the CMDADD command
     new_instr_struct = beckhoff_plc.data['MOTION/INSTR_ECHO'].copy()
@@ -215,9 +220,14 @@ def add_instr(motion_command,setxvel,setyvel,setzvel):
 
     new_instr_struct['MotionCommand'] = command
 
+    new_instr_struct['SetXPosition']= setxpos
     new_instr_struct['SetXVelocity']= setxvel
+    new_instr_struct['SetYPosition']= setypos
     new_instr_struct['SetYVelocity']= setyvel
+    new_instr_struct['SetZPosition']= setzpos
     new_instr_struct['SetZVelocity']= setzvel
+    new_instr_struct['PauseTime']   = setpause
+    new_instr_struct['Comment'] = comment
 
     # Send the json array with the new command 
     beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_instr_struct))

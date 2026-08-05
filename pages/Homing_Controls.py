@@ -37,14 +37,17 @@ layout = html.Div(children=[
             safl.indicator_display(title='X Motors Coupled',id='x-coupled-bool'),
             html.Div(children=[
                 dcc.Input(type='number',debounce=True,step=0.1,id='POSX',value=0),
+                html.Label(id='xpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set X Position",id='SETXPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
                 dcc.Input(type='number',debounce=True,step=0.1,id='POSY',value=0),
+                html.Label(id='ypos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Y Position",id='SETYPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
                 dcc.Input(type='number',debounce=True,step=0.1,id='POSZ',value=0),
+                html.Label(id='zpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Z Position",id='SETZPOS',className='button')
             ],className='divHorizontal')
         ],className='divBorder')
@@ -108,11 +111,8 @@ def update_table(n):
           Input('CMDHOMEX','n_clicks'),
           Input('CMDHOMEY','n_clicks'),
           Input('CMDHOMEZ','n_clicks'),
-          Input('CMDCOUPLE','n_clicks'),
-          Input('SETXPOS','n_clicks'),
-          Input('SETYPOS','n_clicks'),
-          Input('SETZPOS','n_clicks'))
-def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8,bt9,bt10,bt11):
+          Input('CMDCOUPLE','n_clicks'),)
+def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
@@ -131,26 +131,40 @@ def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8,bt9,bt10,bt11):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-@callback(Input('POSX','value'),
+@callback(Output('POSX','value'),
+          Output('POSY','value'),
+          Output('POSZ','value'),
+          Output('xpos','children'),
+          Output('ypos','children'),
+          Output('zpos','children'),
+          Input('POSX','value'),
           Input('POSY','value'),
-          Input('POSZ','value'))
-def update_xyz_set(x,y,z):
+          Input('POSZ','value'),
+          Input('SETXPOS','n_clicks'),
+          Input('SETYPOS','n_clicks'),
+          Input('SETZPOS','n_clicks')) 
+def update_xyz_set(x,y,z,setx,sety,setz):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
         pass
 
-    which_value = dash.ctx.triggered_id
+    new_ctr_struct['POSX'] = x
+    new_ctr_struct['POSY'] = y
+    new_ctr_struct['POSZ'] = z
 
-    if which_value == 'POSX':
-        new_ctr_struct['POSX'] = x
-    elif which_value == 'POSY':
-        new_ctr_struct['POSY'] = y
-    elif which_value == 'POSZ':
-        new_ctr_struct['POSZ'] = z
+    which_button = dash.ctx.triggered_id
+    if which_button == 'SETXPOS':
+        new_ctr_struct['SETXPOS'] = True
+    elif which_button == 'SETYPOS':
+        new_ctr_struct['SETYPOS'] = True
+    elif which_button == 'SETZPOS':
+        new_ctr_struct['SETZPOS'] = True
 
     json_ctr = json.dumps(new_ctr_struct)
         
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
+
+    return x,y,z,beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
