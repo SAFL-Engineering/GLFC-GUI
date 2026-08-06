@@ -37,6 +37,14 @@
     justify-content: center;
 }
 
+.divCenterItems{
+  display:flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 600px;
+}
+
 .divBorder {
     display:flex;
     flex-direction: column;
@@ -114,8 +122,8 @@
 }
 
 .divCentered {
-  /* display: flex; */
-  /* flex-direction: column; */
+  /* display: flex;
+  flex-direction: column; */
   justify-content: center;
 }
 
@@ -127,8 +135,29 @@
 }
 
 .button{
+  display:flex;
   margin: 2px;
   min-width: 200px;
+  max-width: 600px;
+  justify-content: center;
+}
+
+.redButton{
+  margin:2px;
+  max-width:200px;
+  background-color: #ff0000;
+  color:white;
+  border:2px solid transparent;
+}
+
+.redButton:hover{
+  background-color: #7a0000;
+  color:white;
+}
+
+.redButton:active {
+    transform: scale(0.98); /* Slight click shrink effect */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Base button state */
@@ -178,6 +207,11 @@
   /*min-width: 900px;*/
   margin: 0px;
   padding: 0px;
+}
+
+.divPlots{
+  display: flex;
+  justify-content: center;
 }
 
 .link{

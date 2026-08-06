@@ -19,8 +19,16 @@ def create_momentary_button(index, label):
     ], style={'display': 'inline-block'})
 
 layout = html.Div([
-    html.H3("Manual Jog Control"),
-    html.Div(id='which-button-is-pressed', children="Stopped"),
+    html.Div(children=[
+        html.H3("Manual Jog Control"),
+        html.Div(id='which-button-is-pressed', children="Stopped")
+    ],className='divCenterItems'),
+    html.Div(children=[
+        safl.value_display(title='Currectly Selected Basin',id='jog-page-active-basin'),
+    ],style={'display':'flex','flexDirection':'column','justifyContent':'center'}),
+    html.Div(children=[
+        dcc.Button(children='Toggle Selected Basin',id='jog-page-basin-toggle',className='button')
+    ],style={'display':'flex','justifyContent':'center'}),
     html.Div(children = [
     create_momentary_button(1, "Jog X-"),
     html.Label(id='current-x-pos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px'}),
@@ -39,8 +47,11 @@ layout = html.Div([
     safl.value_display(title='X Range',            id='x-hardstops'),
     safl.value_display(title='Y Range',            id='y-hardstops'),
     safl.value_display(title='Z Range',            id='z-hardstops'),
-    dcc.Graph(id='current-xy-pos',className='plots')
-])
+    html.Br(),
+    html.Div(children=[
+        dcc.Graph(id='current-xy-pos',className='plots')
+    ],className='divPlots')
+],className='divOverall')
 
 # Use clientside_callback directly (no "app." prefix)
 clientside_callback(
@@ -149,14 +160,39 @@ def update_ui(states):
            Output('current-y-pos','children'),
            Output('current-z-pos','children'),
            Output('x-hardstops',           'children'),
-          Output('y-hardstops',           'children'),
-          Output('z-hardstops',           'children'),
+           Output('y-hardstops',           'children'),
+           Output('z-hardstops',           'children'),
+           Output('jog-page-active-basin','children'),
            Input('interval-timer','n_intervals')
            )
 def update_position_displays(n):
+    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+        
+    if which_basin == True:
+        basin= "A"
+    elif which_basin == False:
+        basin= "B"
+    else: 
+        basin = "Unknown"
+    
     return  f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.2f} mm",\
             f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.2f} mm",\
             f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.2f} mm",\
             f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]:.1f} mm",\
             f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]:.1f} mm",\
-            f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][2]:.1f} mm"
+            f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][2]:.1f} mm",\
+            basin
+
+@callback(Input("jog-page-basin-toggle","n_clicks"))
+def set_basin(n):
+        # Build the CTR Structure to send the CMDADD command
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    command = not new_ctr_struct['BASINCTR'] 
+
+    new_ctr_struct['BASINCTR'] = command
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))

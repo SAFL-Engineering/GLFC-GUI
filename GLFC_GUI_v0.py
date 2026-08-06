@@ -42,6 +42,12 @@ app.layout = html.Div(children= [
     safl.value_display(title='Time since last Message',           id='last-message-time'    ),
     safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
     html.Br(),
+    safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
+    html.Br(),
+    html.Div(children=[
+        dcc.Button("Stop All Axes",className='redButton',id='globalstop')
+    ],style={'display':'flex','justifyContent':'center'}),
+    html.Br(),
     html.Div(children=[
         html.H3('Select a View',style={'textAlign':'center'}),
         html.Div(children=[
@@ -99,6 +105,33 @@ def heartbeat(n):
     connected_clients = len([t for t in active_clients.values() if now - t < 10])
 
     return f'{connected_clients}'
+
+@callback(Output('mainpage-selected-basin','children'),
+          Input('interval-timer','n_intervals'))
+def update_selected_basin(n):
+    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+    
+    if which_basin == True:
+        return  "A"
+    elif which_basin == False:
+        return "B"
+    else: 
+        return "Unknown"
+
+@callback(Input('globalstop','n_clicks'))
+def axeshalt(n):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['AXESHALT'] = True
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+    
+    
 
 
 if __name__ == '__main__':

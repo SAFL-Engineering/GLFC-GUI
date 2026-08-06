@@ -19,7 +19,10 @@ layout = html.Div(children=[
     # html.Div(id='ctr-echo-table',className='divBorder'),                
     html.Div(children=[
         html.H3('Add Instructions to Script'),
-
+        html.Label('Select which Basin this Script should be run in:'),
+        safl.value_display('Currently Selected Basin','scripting-page-selected-basin'),
+        dcc.Button(id='BASINCTR',children='Toggle Selected Basin',persistence=True,persistence_type='local'),
+        html.Br(),
         html.Label('Select a Command Type:'),
         dcc.Dropdown(options=['Null Instruction','Pause and Wait for Button Press','Go to Absolute Position','Move Relative Distance'],value='Go to Absolute Position',id='motion-command'),
 
@@ -82,8 +85,6 @@ layout = html.Div(children=[
         html.Div(children=[
             html.H3('Run Script'),
             html.Label('Currently Active Script:',id='active-script'),
-            html.Label('Select which Basin this Script should be run in:'),
-            dcc.Dropdown(id='BASINCTR',options=['Basin A','Basin B'],persistence=True,persistence_type='local'),
             html.Br(),
             html.Div(children=[
                 dcc.Checklist(options=['Loop Script Indefinitely'],id='CMDLOOP'),
@@ -144,52 +145,6 @@ def update_script_name(value):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-
-# @callback(Input('motion-command','value'))
-# def add_value(value):
-#     if value=='Pause and Wait for Button Press':
-#         command = 1
-#     elif value=='Go to Absolute Position':
-#         command = 2
-#     elif value=='Move Relative Distance':
-#         command = 3
-#     else:
-#         command = 0
-
-#     new_command['MotionCommand'] = command
-#     print(new_command)
-
-# @callback(Input('setxpos','value'))
-# def add_value(value):
-#     new_command['SetXPosition'] = value
-
-# @callback(Input('setxvel','value'))
-# def add_value(value):
-#     new_command['SetXVelocity'] = value
-
-# @callback(Input('setypos','value'))
-# def add_value(value):
-#     new_command['SetYPosition'] = value
-
-# @callback(Input('setyvel','value'))
-# def add_value(value):
-#     new_command['SetYVelocity'] = value
-
-# @callback(Input('setzpos','value'))
-# def add_value(value):
-#     new_command['SetZPosition'] = value
-
-# @callback(Input('setzvel','value'))
-# def add_value(value):
-#     new_command['SetZVelocity'] = value
-
-# @callback(Input('setpause','value'))
-# def add_value(value):
-#     new_command['PauseTime'] = value
-
-# @callback(Input('comment','value'))
-# def add_value(value):
-#     new_command['Comment'] = value
 
 @callback(Input('motion-command','value'),
           Input('setxpos','value'),
@@ -253,8 +208,8 @@ def send_CMDADD(n):
 
 
 
-@callback(Input("BASINCTR","value"))
-def set_basin(value):
+@callback(Input("BASINCTR","n_clicks"))
+def set_basin(n):
         # Build the CTR Structure to send the CMDADD command
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
@@ -262,11 +217,7 @@ def set_basin(value):
     except:
         pass
 
-
-    if value=='Basin A':
-        command = True
-    else:
-        command = False
+    command = not new_ctr_struct['BASINCTR']
 
     new_ctr_struct['BASINCTR'] = command
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
@@ -324,3 +275,15 @@ def update_script_iterations(val):
     new_ctr_struct['SCRIPTITERATIONS'] = val
 
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+@callback(Output('scripting-page-selected-basin','children'),
+          Input('interval-timer','n_intervals'))
+def update_active_basin(n):
+    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+    
+    if which_basin == True:
+        return  "A"
+    elif which_basin == False:
+        return "B"
+    else: 
+        return "Unknown"

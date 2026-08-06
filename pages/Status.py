@@ -10,10 +10,15 @@ import pandas as pd
 
 dash.register_page(__name__,path='/')
 
+x_max = beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]
+y_max = beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]
+x_padding = 0.1*x_max
+y_padding = 0.1*y_max
+
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=[0],y=[0],name='current-xy'))
-fig.update_xaxes(title_text='X (mm)',range=[-100,beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]+100])
-fig.update_yaxes(scaleanchor='x',scaleratio=1,title_text='Y (mm)',range=[-100,beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]+100])
+fig.update_xaxes(title_text='X (mm)',range=[-x_padding,x_max+x_padding])
+fig.update_yaxes(scaleanchor='x',scaleratio=1,title_text='Y (mm)',range=[-y_padding,y_max+y_padding])
 
 table_dict = {
     "Axis":["X","Y","Z"],
