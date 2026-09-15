@@ -1,4 +1,5 @@
 from dash import Dash, dcc, html, callback, Input, Output ,dash_table,ctx,State
+import dash_daq as daq
 import dash
 import dash_auth
 import credentials as creds
@@ -17,6 +18,16 @@ while not beckhoff_plc.data:
     time.sleep(1)
 if i != 0:
     print('Message Received!')
+
+print(f"beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']: {beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']}")
+if beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE'] == True:
+    # print(f'PAUSE = True')
+    lab_halt = 'Un-Pause Motion'
+    col_halt = "#FF0000"
+else:
+    # print(f"PAUSE = False")
+    lab_halt = 'Pause Motion'
+    col_halt = "#00FF0D"
 
 credentials = creds.credentials
 token       = creds.token
@@ -45,7 +56,7 @@ app.layout = html.Div(children= [
     safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
     html.Br(),
     html.Div(children=[
-        dcc.Button("Stop All Axes",className='redButton',id='globalstop')
+        daq.ToggleSwitch(label=lab_halt,id='globalstop',color=col_halt)
     ],style={'display':'flex','justifyContent':'center'}),
     html.Br(),
     html.Div(children=[
@@ -60,6 +71,8 @@ app.layout = html.Div(children= [
         html.Br(),
         dash.page_container])
 ],className='divOverall')
+
+
 
 @callback(Output('last-message-time','children'),
           Output('last-message-time','style'),
@@ -118,19 +131,35 @@ def update_selected_basin(n):
     else: 
         return "Unknown"
 
-@callback(Input('globalstop','n_clicks'))
-def axeshalt(n):
+@callback(Output('globalstop','value'),
+          Output('globalstop','color'),
+          Output('globalstop','label'),
+          Input('globalstop','value'),
+          prevent_initial_call = True)
+def pause_unpause_motion(state):
+    # print(f'Current State of Toggle Switch: {state}')
+    ctr_state = beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']
+
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
         pass
 
-    new_ctr_struct['AXESHALT'] = True
-
+    new_ctr_struct['PAUSE'] = not ctr_state
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
-    
+
+    if not ctr_state:
+        color = "#FF0000"
+        label = 'Un-pause Motion'
+    else:
+        color = "#00FF0D"
+        label = 'Pause Motion'
+
+
+
+    return not ctr_state, color, label
     
 
 

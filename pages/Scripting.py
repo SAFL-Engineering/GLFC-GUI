@@ -5,11 +5,6 @@ import SAFL_Dash_Toolbox as safl
 import json
 import pandas as pd
 
-new_command = beckhoff_plc.data['MOTION/INSTR_ECHO']
-del new_command['timestamp']
-
-new_command['MotionCommand'] = 2
-new_command['setxvel'] = 10
 
 dash.register_page(__name__)
 
@@ -189,6 +184,8 @@ def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,set
 
 @callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):
+    new_command = beckhoff_plc.data['MOTION/INSTR_ECHO']
+    del new_command['timestamp']
     # Send the json array with the new command 
     beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_command))
 

@@ -1,5 +1,6 @@
 import dash
 from dash import dcc, html, Input, Output, ALL, ctx, clientside_callback,callback,dash_table
+import dash_daq as daq
 from Beckhoff_PLC import beckhoff_plc
 import json
 import SAFL_Dash_Toolbox as safl
@@ -16,10 +17,19 @@ pos_table_dict = {
 }
 pos_table_df = pd.DataFrame(pos_table_dict) 
 
+if beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN'] == True:
+    lab = 'Disable Axes'
+    col = "#00FF0D"
+else:
+    lab = 'Enable Axes'
+    col = "#FF0000"
+
+
+
 layout = html.Div(children=[
         html.Div(children=[
-            dcc.Button("STOP All Axes",className='button',  id='AXESHALT'),
-            dcc.Button("ENABLE All Axes",className='button',id='AXESEN'),
+            # dcc.Button("ENABLE All Axes",className='button',id='AXESEN'),
+            daq.ToggleSwitch(id='AXESEN',label=lab,color=col,value= beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN'],style={'margin':'10px'}),
             dcc.Button("RESET All Axes",className='button', id='AXESRESET'),
         ],className='divHorizontal'),
         html.Br(),
@@ -36,17 +46,17 @@ layout = html.Div(children=[
             dcc.Button(children=['Couple/Decouple X Motors'],id='CMDCOUPLE'),
             safl.indicator_display(title='X Motors Coupled',id='x-coupled-bool'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True,step=0.1,id='POSX',value=0),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSX',value=0,persistence=True,persistence_type='local'),
                 html.Label(id='xpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set X Position",id='SETXPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True,step=0.1,id='POSY',value=0),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSY',value=0,persistence=True,persistence_type='local'),
                 html.Label(id='ypos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Y Position",id='SETYPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=True,step=0.1,id='POSZ',value=0),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSZ',value=0,persistence=True,persistence_type='local'),
                 html.Label(id='zpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Z Position",id='SETZPOS',className='button')
             ],className='divHorizontal')
@@ -104,15 +114,13 @@ def update_table(n):
              {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{0:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{data['HardStopLocations'][2]:.1f} mm"}],\
              selected_basin
 
-@callback(Input('AXESHALT','n_clicks'),
-          Input('AXESEN','n_clicks'),
-          Input('AXESRESET','n_clicks'),
+@callback(Input('AXESRESET','n_clicks'),
           Input('CMDHOME','n_clicks'),
           Input('CMDHOMEX','n_clicks'),
           Input('CMDHOMEY','n_clicks'),
           Input('CMDHOMEZ','n_clicks'),
           Input('CMDCOUPLE','n_clicks'),)
-def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
+def actions(bt1,bt2,bt3,bt4,bt5,bt6):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
@@ -134,9 +142,6 @@ def actions(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
 @callback(Output('POSX','value'),
           Output('POSY','value'),
           Output('POSZ','value'),
-          Output('xpos','children'),
-          Output('ypos','children'),
-          Output('zpos','children'),
           Input('POSX','value'),
           Input('POSY','value'),
           Input('POSZ','value'),
@@ -150,9 +155,9 @@ def update_xyz_set(x,y,z,setx,sety,setz):
     except:
         pass
 
-    new_ctr_struct['POSX'] = x
-    new_ctr_struct['POSY'] = y
-    new_ctr_struct['POSZ'] = z
+    new_ctr_struct['POSX'] = float(x)
+    new_ctr_struct['POSY'] = float(y)
+    new_ctr_struct['POSZ'] = float(z)
 
     which_button = dash.ctx.triggered_id
     if which_button == 'SETXPOS':
@@ -167,4 +172,42 @@ def update_xyz_set(x,y,z,setx,sety,setz):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-    return x,y,z,beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
+    return x,y,z
+
+@callback(Output('xpos','children'),
+          Output('ypos','children'),
+          Output('zpos','children'),
+          Input('interval-timer','n_intervals'))
+def update(n):
+    return beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
+
+
+@callback(Output('AXESEN','value'),
+          Output('AXESEN','color'),
+          Output('AXESEN','label'),
+          Input('AXESEN','value'),
+          prevent_initial_call = True)
+def pause_unpause_motion(state):
+    # print(f'Current State of Toggle Switch: {state}')
+    ctr_state = beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN']
+
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['AXESEN'] = not ctr_state
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+    if ctr_state:
+        color = "#FF0000"
+        label = 'Enable Axes Motors'
+    else:
+        color = "#00FF0D"
+        label = 'Disable Axes Motors'
+
+
+
+    return not ctr_state, color, label
