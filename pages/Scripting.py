@@ -24,28 +24,28 @@ layout = html.Div(children=[
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set X Target Position:'),
-                dcc.Input(id='setxpos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
+                dcc.Input(id='setxpos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetXPosition'])],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set X Target Velocity:'),
-                dcc.Input(id='setxvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
+                dcc.Input(id='setxvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetXVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set Y Target Position:'),
-                dcc.Input(id='setypos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
+                dcc.Input(id='setypos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetYPosition'])],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Y Target Velocity:'),
-                dcc.Input(id='setyvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
+                dcc.Input(id='setyvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetYVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
         
         html.Div(children=[
             html.Div(children=[
                 html.Label('Set Z Target Position:'),
-                dcc.Input(id='setzpos',type='number',debounce=True,step=0.1,value = 0)],style={'margin':'10px'}),
+                dcc.Input(id='setzpos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetZPosition'])],style={'margin':'10px'}),
             html.Div(children=[
                 html.Label('Set Z Target Velocity:'),
-                dcc.Input(id='setzvel',type='number',debounce=True,step=1,value=10)],style={'margin':'10px'}),
+                dcc.Input(id='setzvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetZVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
         html.Label('Set Pause Time Before Next Move (milliseconds):'),
@@ -179,15 +179,17 @@ def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,set
     new_instr_struct['PauseTime']   = setpause
     new_instr_struct['Comment'] = comment
 
+    # print(new_instr_struct)
+
     # Send the json array with the new command 
-    beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_instr_struct))
+    beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_instr_struct))
 
 @callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):
     new_command = beckhoff_plc.data['MOTION/INSTR_ECHO']
     del new_command['timestamp']
     # Send the json array with the new command 
-    beckhoff_plc.client.publish(topic='MOTION/INSTR',payload=json.dumps(new_command))
+    beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_command))
 
     # Build the CTR Structure to send the CMDADD command
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()

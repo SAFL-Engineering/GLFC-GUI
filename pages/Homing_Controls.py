@@ -179,7 +179,9 @@ def update_xyz_set(x,y,z,setx,sety,setz):
           Output('zpos','children'),
           Input('interval-timer','n_intervals'))
 def update(n):
-    return beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
+    return f'{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:.1f}',\
+           f'{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:.1f}',\
+           f'{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:.1f}'
 
 
 @callback(Output('AXESEN','value'),

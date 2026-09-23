@@ -19,15 +19,6 @@ while not beckhoff_plc.data:
 if i != 0:
     print('Message Received!')
 
-print(f"beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']: {beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']}")
-if beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE'] == True:
-    # print(f'PAUSE = True')
-    lab_halt = 'Un-Pause Motion'
-    col_halt = "#FF0000"
-else:
-    # print(f"PAUSE = False")
-    lab_halt = 'Pause Motion'
-    col_halt = "#00FF0D"
 
 credentials = creds.credentials
 token       = creds.token
@@ -56,7 +47,7 @@ app.layout = html.Div(children= [
     safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
     html.Br(),
     html.Div(children=[
-        daq.ToggleSwitch(label=lab_halt,id='globalstop',color=col_halt)
+        safl.value_display('Motion Status',id='pause-status'),
     ],style={'display':'flex','justifyContent':'center'}),
     html.Br(),
     html.Div(children=[
@@ -78,6 +69,7 @@ app.layout = html.Div(children= [
           Output('last-message-time','style'),
           Output('hmi-loop-time','children'),
           Output('stored_variables','data'),
+          Output('pause-status','children'),
           Input('interval-timer','n_intervals'),
           State('stored_variables','data'))
 def update_hmi_loop_time(n,stored_data):
@@ -102,8 +94,12 @@ def update_hmi_loop_time(n,stored_data):
     # json_ctr = json.dumps(new_ctr_struct)
     # # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     # beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
+    if beckhoff_plc.data['MOTION/STATUS']['HaltDone'] == 1:
+        pause_status = 'Paused'
+    else:
+        pause_status = 'Not Paused'
 
-    return f'{datetime.datetime.now()-beckhoff_plc.time_of_last_message}',style,f'{dt_loop}',stored_data
+    return f'{datetime.datetime.now()-beckhoff_plc.time_of_last_message}',style,f'{dt_loop}',stored_data,pause_status
 
 @callback(Output('connected-users-label','children'),
     Input("interval-timer","n_intervals"),
@@ -131,35 +127,6 @@ def update_selected_basin(n):
     else: 
         return "Unknown"
 
-@callback(Output('globalstop','value'),
-          Output('globalstop','color'),
-          Output('globalstop','label'),
-          Input('globalstop','value'),
-          prevent_initial_call = True)
-def pause_unpause_motion(state):
-    # print(f'Current State of Toggle Switch: {state}')
-    ctr_state = beckhoff_plc.data['MOTION/CTR_ECHO']['PAUSE']
-
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
-    try:
-        del new_ctr_struct['timestamp']
-    except:
-        pass
-
-    new_ctr_struct['PAUSE'] = not ctr_state
-    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
-    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
-
-    if not ctr_state:
-        color = "#FF0000"
-        label = 'Un-pause Motion'
-    else:
-        color = "#00FF0D"
-        label = 'Pause Motion'
-
-
-
-    return not ctr_state, color, label
     
 
 
