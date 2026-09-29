@@ -21,7 +21,7 @@ class mqtt_client():
         self.time_of_last_status = 'No Data Recieved Yet'
         self.counter = 0
 
-        self.script_array = []
+        self.script = {}
 
     def on_message(self,client,userdata,msg):
         self.data[msg.topic] = {}
@@ -35,16 +35,16 @@ class mqtt_client():
             self.data[msg.topic][key] = json.loads(msg.payload.decode('utf-8'))[key]
 
         if msg.topic == 'MOTION/SCRIPTSEND':
-            self.scriptsend_payload = json.loads(msg.payload.decode('utf-8'))
-     
+            self.scriptsend_payload = json.loads(msg.payload.decode('utf-8'))     
 
             if self.scriptsend_payload['index'] == 0:
-                self.script_array = []
-                self.script_array.append(self.scriptsend_payload)
+                self.script = {}
 
+            if len(self.script) > 0:
+                new_row = pd.DataFrame([self.scriptsend_payload])
+                self.script = pd.concat([self.script,new_row],ignore_index=True)
             else:
-                self.script_array.append(self.scriptsend_payload)
-                # print(self.script_array)
+                self.script = pd.DataFrame([self.scriptsend_payload])
 
 
 

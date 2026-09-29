@@ -11,6 +11,7 @@ dash.register_page(__name__)
 # time.sleep(1)
 
 layout = html.Div(children=[
+    html.Div(children=[
     # html.Div(id='ctr-echo-table',className='divBorder'),                
     html.Div(children=[
         html.H3('Add Instructions to Script'),
@@ -57,10 +58,7 @@ layout = html.Div(children=[
 
         dcc.Button('Add Instruction to the Script',id='CMDADD',className='button'),
         dcc.Button('Delete the last task from the Script',id='CMDDEL',className='button'),
-        dcc.Button('Clear the currently loaded Script',id='CMDCLR',className='button')
-        
-        
-       
+        dcc.Button('Clear the currently loaded Script',id='CMDCLR',className='button')        
     ],className='divBorder'),
     html.Div(children=[
         html.Div(children = [
@@ -91,7 +89,28 @@ layout = html.Div(children=[
             dcc.Button('Run Active Script',id='CMDRUN',className='button')
         ],className='divBorder')
     ])
-],className='divHorizontal')
+],className='divHorizontal'),
+html.Div(children=[
+    html.Label("The Script We're Building!"),
+    html.Div([
+                dash_table.DataTable(columns = [{"name": i, "id": i} for i in beckhoff_plc.script.columns], 
+                                             data=beckhoff_plc.script.to_dict('records'), 
+                                             id='script-inprogress',
+                                             style_table={
+                                                 'maxWidth':'650px'
+                                             },
+                                             style_cell={
+                                                 'fontFamily':'Arial, sans-serif',
+                                                 'textAlign':'center',
+                                                 'minWidth':'100px'
+                                             },
+                                             style_header={
+                                                 'fontWeight': 'bold'
+                                             },
+                                             style_data={'pointer-events':'none'})])
+
+],className='divBorder'),
+])
 
 @callback(Output('active-script','children'),
           Output('active-script-1','children'),
@@ -278,11 +297,16 @@ def update_script_iterations(val):
 @callback(Output('scripting-page-selected-basin','children'),
           Input('interval-timer','n_intervals'))
 def update_active_basin(n):
-    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+    which_basin = beckhoff_plc.data['MOTION/STATUS']['basinstate']
     
-    if which_basin == True:
+    if which_basin == 0:
         return  "A"
-    elif which_basin == False:
+    elif which_basin == 1:
         return "B"
     else: 
         return "Unknown"
+
+@callback(Output('script-inprogress','data'),
+          Input('interval-timer','n_intervals'))
+def update_script_inprogress_table(n):
+    return beckhoff_plc.script.to_dict('records')

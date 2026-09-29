@@ -23,7 +23,7 @@ if i != 0:
 credentials = creds.credentials
 token       = creds.token
 
-update_interval = 200 #msec
+update_interval = 250 #msec
 active_clients = {}
 
 app = Dash(name=__name__,use_pages=True)
@@ -46,9 +46,10 @@ app.layout = html.Div(children= [
     html.Br(),
     safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
     html.Br(),
+    safl.value_display('Motion Status',id='pause-status'),
     html.Div(children=[
-        safl.value_display('Motion Status',id='pause-status'),
-    ],style={'display':'flex','justifyContent':'center'}),
+        dcc.Button(children=['Pause'],id='stop-start',className='button')
+    ],className='divJogButtons'),
     html.Br(),
     html.Div(children=[
         html.H3('Select a View',style={'textAlign':'center'}),
@@ -94,7 +95,7 @@ def update_hmi_loop_time(n,stored_data):
     # json_ctr = json.dumps(new_ctr_struct)
     # # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     # beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
-    if beckhoff_plc.data['MOTION/STATUS']['HaltDone'] == 1:
+    if beckhoff_plc.data['MOTION/STATUS']['Stop_Int'] == 1:
         pause_status = 'Paused'
     else:
         pause_status = 'Not Paused'
@@ -116,16 +117,40 @@ def heartbeat(n):
     return f'{connected_clients}'
 
 @callback(Output('mainpage-selected-basin','children'),
+          Output('stop-start','children'),
           Input('interval-timer','n_intervals'))
 def update_selected_basin(n):
-    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+    which_basin = beckhoff_plc.data['MOTION/STATUS']['basinstate']
+    paused_status = beckhoff_plc.data['MOTION/STATUS']['Stop_Int']
+
+    if paused_status == True:
+        pause_text = 'Unpause'
+    else:
+        pause_text = 'Pause'
     
-    if which_basin == True:
-        return  "A"
-    elif which_basin == False:
-        return "B"
+    if which_basin == 0:
+        basin_text =  "A"
+    elif which_basin == 1:
+        basin_text =  "B"
     else: 
-        return "Unknown"
+        basin_text = "Unknown"
+
+    return basin_text, pause_text
+
+@callback(Input('stop-start','n_clicks'),
+          prevent_initial_call=True)
+def pause_unpause(n):
+    # print(f'Pause Button has been pressed: {n} times')
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['STOP'] = not new_ctr_struct['STOP']
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
     
 

@@ -41,7 +41,7 @@ layout = html.Div(children= [
             html.H3('Motion Status'),
             safl.indicator_display(title='Move Active',           id='moveactive-label'     ),
             safl.indicator_display(title='E Stop',                id='e-stop-label'         ),
-            safl.indicator_display(title='Halt Done',             id='halt-done-label'),
+            safl.indicator_display(title='Paused',             id='halt-done-label'),
             html.Br(),
             dash_table.DataTable(columns = [{"name": i, "id": i} for i in table_df.columns], 
                                  data=table_df.to_dict('records'), 
@@ -60,7 +60,7 @@ layout = html.Div(children= [
         ],className='divBorder'),
         html.Div(children=[
             html.H3('Configuration Status'),
-            safl.indicator_display(title='Axes Located',          id='axes-located-label'      ),
+            safl.indicator_display(title='All Axes Located/Homed',          id='axes-located-label'      ),
             safl.indicator_display(title='X Drives Coupled',      id='x-coupled-label'      )      
 
         ],className='divBorder'),
@@ -124,16 +124,16 @@ layout = html.Div(children= [
           prevent_initial_call =True)
 def update_status_display(n):
 
-    if beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR'] == True:
+    if beckhoff_plc.data['MOTION/STATUS']['basinstate'] == 0:
         selected_basin = 'A',
-    elif beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR'] == False:
+    elif beckhoff_plc.data['MOTION/STATUS']['basinstate'] == 1:
         selected_basin = 'B'
     else:
         selected_basin = 'Unknown'
 
     return  safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['MoveActive']       ,"#DA2020","#9B9B9B"),\
             safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['eStop']            ,"#DA2020","#9B9B9B"), \
-            safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['HaltDone']         ,"#DA2020","#9B9B9B"), \
+            safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Stop_Int']         ,"#DA2020","#9B9B9B"), \
             safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['AxesLocated']      ,"#DA2020","#9B9B9B"), \
             safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['xCoupled']         ,"#DA2020","#9B9B9B"),\
             safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Script_Open_Err']  ,"#DA2020","#9B9B9B"), \

@@ -113,7 +113,7 @@ def update_ui(states):
         msg = f"{index_dict[pressed_indices[0]]}"
     
     # This will now ONLY print when a button is actually pressed or released
-    print(f"Callback Triggered: {msg}") 
+    # print(f"Callback Triggered: {msg}") 
 
 
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO']
@@ -166,11 +166,11 @@ def update_ui(states):
            Input('interval-timer','n_intervals')
            )
 def update_position_displays(n):
-    which_basin = beckhoff_plc.data['MOTION/CTR_ECHO']['BASINCTR']
+    which_basin = beckhoff_plc.data['MOTION/STATUS']['basinstate']
         
-    if which_basin == True:
+    if which_basin == 0:
         basin= "A"
-    elif which_basin == False:
+    elif which_basin == 1:
         basin= "B"
     else: 
         basin = "Unknown"
@@ -192,7 +192,7 @@ def set_basin(n):
     except:
         pass
 
-    command = not new_ctr_struct['BASINCTR'] 
+    command = True 
 
     new_ctr_struct['BASINCTR'] = command
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
