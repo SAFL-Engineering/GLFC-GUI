@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, callback, Input, Output ,dash_table,ctx,State
+from dash import Dash, dcc, html, callback, Input, Output ,dash_table,ctx,State,no_update
 import dash
 from Beckhoff_PLC import beckhoff_plc
 import SAFL_Dash_Toolbox as safl
@@ -9,6 +9,34 @@ import pandas as pd
 dash.register_page(__name__)
 
 # time.sleep(1)
+try:
+    script_table = html.Div(children=[
+        html.Label("The Script We're Building!"),
+        html.Div([
+                    dash_table.DataTable(columns = [{"name": i, "id": i} for i in beckhoff_plc.script.columns], 
+                                                data=beckhoff_plc.script.to_dict('records'), 
+                                                id='script-inprogress',
+                                                style_table={
+                                                    'maxWidth':'650px'
+                                                },
+                                                style_cell={
+                                                    'fontFamily':'Arial, sans-serif',
+                                                    'textAlign':'center',
+                                                    'minWidth':'100px'
+                                                },
+                                                style_header={
+                                                    'fontWeight': 'bold'
+                                                },
+                                                style_data={'pointer-events':'none'})])
+
+    ],className='divBorder')
+except:
+    script_table = html.Div(children=[
+        html.Label("No Script Available over MQTT"),
+         html.Div([
+                            dash_table.DataTable(id='script-inprogress')
+         ])
+    ])
 
 layout = html.Div(children=[
     html.Div(children=[
@@ -88,28 +116,9 @@ layout = html.Div(children=[
             html.Br(),
             dcc.Button('Run Active Script',id='CMDRUN',className='button')
         ],className='divBorder')
-    ])
-],className='divHorizontal'),
-html.Div(children=[
-    html.Label("The Script We're Building!"),
-    html.Div([
-                dash_table.DataTable(columns = [{"name": i, "id": i} for i in beckhoff_plc.script.columns], 
-                                             data=beckhoff_plc.script.to_dict('records'), 
-                                             id='script-inprogress',
-                                             style_table={
-                                                 'maxWidth':'650px'
-                                             },
-                                             style_cell={
-                                                 'fontFamily':'Arial, sans-serif',
-                                                 'textAlign':'center',
-                                                 'minWidth':'100px'
-                                             },
-                                             style_header={
-                                                 'fontWeight': 'bold'
-                                             },
-                                             style_data={'pointer-events':'none'})])
-
-],className='divBorder'),
+    ]),
+    script_table,
+],className='divHorizontal')
 ])
 
 @callback(Output('active-script','children'),
@@ -309,4 +318,7 @@ def update_active_basin(n):
 @callback(Output('script-inprogress','data'),
           Input('interval-timer','n_intervals'))
 def update_script_inprogress_table(n):
-    return beckhoff_plc.script.to_dict('records')
+    try:
+        return beckhoff_plc.script.to_dict('records')
+    except:
+        no_update

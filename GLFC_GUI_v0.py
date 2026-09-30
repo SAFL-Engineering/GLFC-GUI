@@ -152,6 +152,23 @@ def pause_unpause(n):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
+@callback(Input('interval-timer','n_intervals'))
+def send_heartbeat(n):
+    '''
+    Send a heartbeat every update interval to the MQTT MOTION/CTR topic that the PLC will read. 
+    If jogging (or other motion) is ongoing and the PLC does not receive a heartbeat within a set amount of time motion will be stopped. 
+    This is to protect against situations where the user might be jogging and then the network connection is lost or the browser is closed. 
+    '''
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['HEARTBEAT'] = True
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+    print(f'{datetime.datetime.now()} Sent a heartbeat to Townswick')
     
 
 
