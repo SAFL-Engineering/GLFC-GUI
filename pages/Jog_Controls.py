@@ -50,7 +50,7 @@ layout = html.Div([
     html.Br(),
     html.Div(children=[
         dcc.Graph(id='current-xy-pos',className='plots')
-    ],className='divPlots')
+    ])
 ],className='divOverall')
 
 # Use clientside_callback directly (no "app." prefix)

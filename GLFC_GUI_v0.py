@@ -19,6 +19,8 @@ while not beckhoff_plc.data:
 if i != 0:
     print('Message Received!')
 
+beckhoff_plc.axes_enabled = beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN']
+beckhoff_plc.loop_script  = beckhoff_plc.data['MOTION/CTR_ECHO']["CMDLOOP"]
 
 credentials = creds.credentials
 token       = creds.token
@@ -147,7 +149,7 @@ def pause_unpause(n):
     except:
         pass
 
-    new_ctr_struct['STOP'] = not new_ctr_struct['STOP']
+    new_ctr_struct['STOP'] = True
 
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
@@ -159,16 +161,10 @@ def send_heartbeat(n):
     If jogging (or other motion) is ongoing and the PLC does not receive a heartbeat within a set amount of time motion will be stopped. 
     This is to protect against situations where the user might be jogging and then the network connection is lost or the browser is closed. 
     '''
-    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
-    try:
-        del new_ctr_struct['timestamp']
-    except:
-        pass
+    
+    beckhoff_plc.client.publish(topic='MOTION/HB',payload='{"HEARTBEAT":true}')
 
-    new_ctr_struct['HEARTBEAT'] = True
-    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
-
-    print(f'{datetime.datetime.now()} Sent a heartbeat to Townswick')
+    # print(f'{datetime.datetime.now()} Sent a heartbeat to Townswick')
     
 
 

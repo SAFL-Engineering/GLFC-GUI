@@ -28,9 +28,14 @@ else:
 
 layout = html.Div(children=[
         html.Div(children=[
-            # dcc.Button("ENABLE All Axes",className='button',id='AXESEN'),
-            daq.ToggleSwitch(id='AXESEN',label=lab,color=col,value= beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN'],style={'margin':'10px'}),
-            dcc.Button("RESET All Axes",className='button', id='AXESRESET'),
+            html.Div(children=[
+            safl.indicator_display(title='Axes Enabled',id='enabled-status'),
+            dcc.Button("Enable/Disable",id='axes-enable-button'),
+            html.Br(),
+            html.Label('If motors have errors, click RESET to atempt to clear.'),
+            dcc.Button("RESET All Axes", id='AXESRESET')
+            ],className='divBorder'),
+
         ],className='divHorizontal'),
         html.Br(),
         html.Div(children=[
@@ -94,14 +99,21 @@ def update_homing(n):
            safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['AxesLocated'],"#DA2020","#9B9B9B")
 
 @callback(Output('pos-vel-extents-table','data'),
+          Output('axes-enable-button','children'),
           Input('interval-timer','n_intervals'),
           prevent_initial_call = True)
 def update_table(n):
     data = beckhoff_plc.data['MOTION/STATUS']
+
+    if beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN']:
+        button_text =  'Disable Axes'
+    else:
+        button_text =  'Enable Axes'
     
     return  [{'Axis':'X','Position':f"{data['xPosOut']:.1f} mm",'Basin Min':f"{data['basinxMin']:.1f} mm",'Velocity':f"{data['xVelOut']:.1f} mm/s",'Basin Max':f"{data['basinxMax']:.1f} mm"},\
                         {'Axis':'Y','Position':f"{data['yPosOut']:.1f} mm",'Basin Min':f"{data['basinyMin']:.1f} mm",'Velocity':f"{data['yVelOut']:.1f} mm/s",'Basin Max':f"{data['basinyMax']:.1f} mm"},\
-                        {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{0:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{data['HardStopLocations'][2]:.1f} mm"}]
+                        {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{0:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{data['HardStopLocations'][2]:.1f} mm"}],\
+                        button_text
 
 
 
@@ -175,14 +187,14 @@ def update(n):
            f'{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:.1f}'
 
 
-@callback(Output('AXESEN','value'),
-          Output('AXESEN','color'),
-          Output('AXESEN','label'),
-          Input('AXESEN','value'),
-          prevent_initial_call = True)
-def pause_unpause_motion(state):
-    # print(f'Current State of Toggle Switch: {state}')
-    ctr_state = beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN']
+@callback(Output('enabled-status','color'),
+          Input('interval-timer','n_intervals'))
+def update_enabled_status_indicator(n):
+    return safl.update_indicator_color(beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN'],"#7DDA20","#9B9B9B")
+
+@callback(Input('axes-enable-button','n_clicks'))
+def enable_disable_axes(n):
+    beckhoff_plc.axes_enabled = not beckhoff_plc.axes_enabled
 
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
@@ -190,17 +202,16 @@ def pause_unpause_motion(state):
     except:
         pass
 
-    new_ctr_struct['AXESEN'] = not ctr_state
-    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
-    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+    print(f"CTR_ECHO AXESEN':{new_ctr_struct['AXESEN']}")
+    print(f"GUI Axes Enabled: {beckhoff_plc.axes_enabled}\n")
+          
+    
+    if new_ctr_struct['AXESEN'] != beckhoff_plc.axes_enabled:
+        new_ctr_struct['AXESEN'] = beckhoff_plc.axes_enabled
+        print(f"Setting AXESEN to {beckhoff_plc.axes_enabled} and sending over MQTT")
+        beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
-    if ctr_state:
-        color = "#FF0000"
-        label = 'Enable Axes Motors'
-    else:
-        color = "#00FF0D"
-        label = 'Disable Axes Motors'
+    
 
 
-
-    return not ctr_state, color, label
+    

@@ -15,10 +15,16 @@ y_max = beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]
 x_padding = 0.1*x_max
 y_padding = 0.1*y_max
 
+# print(f"y-padding: {y_padding} mm")
+
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=[0],y=[0],name='current-xy'))
-fig.update_xaxes(title_text='X (mm)',range=[-x_padding,x_max+x_padding])
-fig.update_yaxes(scaleanchor='x',scaleratio=1,title_text='Y (mm)',range=[-y_padding,y_max+y_padding])
+fig.update_xaxes(title_text='X (mm)')
+fig.update_xaxes(range=[-x_padding,x_max+x_padding])
+fig.update_yaxes(scaleanchor='x',scaleratio=1,title_text='Y (mm)')
+fig.update_yaxes(range=[-y_padding,y_max+y_padding])
+
+fig.update_layout(height=200)
 
 table_dict = {
     "Axis":["X","Y","Z"],
