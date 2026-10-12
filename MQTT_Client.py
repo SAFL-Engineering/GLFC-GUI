@@ -9,7 +9,12 @@ class mqtt_client():
     def __init__(self,broker_address,broker_port,subscriptions):
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_message = self.on_message
-        self.client.connect(broker_address,broker_port,60)
+        try:
+            self.client.connect(broker_address,broker_port,60)
+        except Exception as e:
+            print('\nError Connecting to MQTT Broker! Fatal Error. Closing GUI.\n\n')
+            raise e
+        
         for sub in subscriptions:
             self.client.subscribe(sub)
 

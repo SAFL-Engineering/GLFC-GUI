@@ -105,7 +105,7 @@ def update_homing(n):
 def update_table(n):
     data = beckhoff_plc.data['MOTION/STATUS']
 
-    if beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN']:
+    if beckhoff_plc.data['MOTION/STATUS']['En_Int']:
         button_text =  'Disable Axes'
     else:
         button_text =  'Enable Axes'
@@ -190,26 +190,18 @@ def update(n):
 @callback(Output('enabled-status','color'),
           Input('interval-timer','n_intervals'))
 def update_enabled_status_indicator(n):
-    return safl.update_indicator_color(beckhoff_plc.data['MOTION/CTR_ECHO']['AXESEN'],"#7DDA20","#9B9B9B")
+    return safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['En_Int'],"#7DDA20","#9B9B9B")
 
 @callback(Input('axes-enable-button','n_clicks'))
 def enable_disable_axes(n):
-    beckhoff_plc.axes_enabled = not beckhoff_plc.axes_enabled
-
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
     except:
         pass
 
-    print(f"CTR_ECHO AXESEN':{new_ctr_struct['AXESEN']}")
-    print(f"GUI Axes Enabled: {beckhoff_plc.axes_enabled}\n")
-          
-    
-    if new_ctr_struct['AXESEN'] != beckhoff_plc.axes_enabled:
-        new_ctr_struct['AXESEN'] = beckhoff_plc.axes_enabled
-        print(f"Setting AXESEN to {beckhoff_plc.axes_enabled} and sending over MQTT")
-        beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+    new_ctr_struct['AXESEN']=True      
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
     
 

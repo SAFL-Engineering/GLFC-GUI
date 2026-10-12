@@ -107,13 +107,13 @@ layout = html.Div(children=[
             html.H3('Run Script'),
             html.Label('Currently Active Script:',id='active-script'),
             html.Br(),
-            html.Div(children=[
-                dcc.Checklist(options=['Loop Script Indefinitely'],id='CMDLOOP'),
-            ],className='divHorizontal'),
+            safl.indicator_display(title='Loop Script Indefinitely',id='CMDLOOP_state'),
+            dcc.Button(children=['Enable Looping'],id='CMDLOOP'),
             html.Div(children=[html.B('OR')],className='divHorizontal'),
-            html.Label('Specify Many Times to Repeat this Script:'),
+            html.Label('Specify How Many Times to Repeat this Script:'),
             dcc.Input(id='SCRIPTITERATIONS',type='number',min=1),
             html.Br(),
+            safl.indicator_display('Script Running',id='script-running'),
             dcc.Button('Run Active Script',id='CMDRUN',className='button')
         ],className='divBorder')
     ]),
@@ -249,7 +249,7 @@ def set_basin(n):
     new_ctr_struct['BASINCTR'] = command
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
-@callback(Input("CMDLOOP",'value'))
+@callback(Input("CMDLOOP",'n_clicks'))
 def loop(val):
 
             # Build the CTR Structure to send the CMDADD command
@@ -259,10 +259,7 @@ def loop(val):
     except:
         pass
 
-    if len(val) > 0:
-        new_ctr_struct['CMDLOOP'] = True
-    else:
-        new_ctr_struct['CMDLOOP'] = False
+    new_ctr_struct['CMDLOOP'] = True
 
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
@@ -304,16 +301,29 @@ def update_script_iterations(val):
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
 @callback(Output('scripting-page-selected-basin','children'),
+          Output('CMDLOOP_state','color'),
+          Output('CMDLOOP','children'),
+          Output('script-running','color'),
           Input('interval-timer','n_intervals'))
 def update_active_basin(n):
     which_basin = beckhoff_plc.data['MOTION/STATUS']['basinstate']
-    
     if which_basin == 0:
-        return  "A"
+        basin_text = "A"
     elif which_basin == 1:
-        return "B"
+        basin_text = "B"
     else: 
-        return "Unknown"
+        basin_text =  "Unknown"
+
+    if beckhoff_plc.data['MOTION/STATUS']['Loop_Int']:
+        button_text = 'Disable Looping'
+    else:
+        button_text = 'Enable Looping'
+
+    return basin_text,\
+           safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Loop_Int'],"#DA2020","#9B9B9B"),\
+           button_text,\
+           safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Run_Int'],"#DA2020","#9B9B9B")
+           
 
 @callback(Output('script-inprogress','data'),
           Input('interval-timer','n_intervals'))
