@@ -117,8 +117,10 @@ layout = html.Div(children=[
             dcc.Button('Run Active Script',id='CMDRUN',className='button')
         ],className='divBorder')
     ]),
-    script_table,
-],className='divHorizontal')
+],className='divHorizontal'),
+html.Div(children=[
+    script_table
+],className='divBorder')
 ])
 
 @callback(Output('active-script','children'),

@@ -26,7 +26,8 @@ class mqtt_client():
         self.time_of_last_status = 'No Data Recieved Yet'
         self.counter = 0
 
-        self.script = {}
+        self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+        self.time_of_last_script_receipt = datetime.datetime.now()
 
     def on_message(self,client,userdata,msg):
         self.data[msg.topic] = {}
@@ -39,17 +40,26 @@ class mqtt_client():
         for key in  list(msg_dict.keys()):
             self.data[msg.topic][key] = json.loads(msg.payload.decode('utf-8'))[key]
 
+        time_since_last_scriptsend = datetime.datetime.now() - self.time_of_last_script_receipt
+
+        if time_since_last_scriptsend.seconds >=1: # if its been more than 1 second since we have received 
+            self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+
         if msg.topic == 'MOTION/SCRIPTSEND':
-            self.scriptsend_payload = json.loads(msg.payload.decode('utf-8'))     
+            self.time_of_last_script_receipt = datetime.datetime.now()
 
-            if self.scriptsend_payload['index'] == 0:
-                self.script = {}
+            self.scriptsend_payload = json.loads(msg.payload.decode('utf-8'))
 
-            if len(self.script) > 0:
-                new_row = pd.DataFrame([self.scriptsend_payload])
-                self.script = pd.concat([self.script,new_row],ignore_index=True)
-            else:
-                self.script = pd.DataFrame([self.scriptsend_payload])
+            if self.scriptsend_payload['index']+1 < len(self.script):
+                print(f"Current Index +1: {self.scriptsend_payload['index']+1}")
+                print(f"length of script so far: {len(self.script)}")
+                self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+
+            script_sans_index = self.scriptsend_payload.copy()
+            del script_sans_index['index']
+
+            self.script.loc[self.scriptsend_payload['index']] = list(script_sans_index.values())
+
 
 
 
