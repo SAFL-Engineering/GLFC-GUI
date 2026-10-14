@@ -11,7 +11,7 @@ dash.register_page(__name__)
 # time.sleep(1)
 try:
     script_table = html.Div(children=[
-        html.Label("The Script We're Building!"),
+        html.Label("Currently Active Script"),
         html.Div([
                     dash_table.DataTable(columns = [{"name": i, "id": i} for i in beckhoff_plc.script.columns], 
                                                 data=beckhoff_plc.script.to_dict('records'), 
@@ -81,7 +81,7 @@ layout = html.Div(children=[
         dcc.Input(id='setpause',type='number',debounce=True,step=1,min=0,value=0),
 
         html.Label('Add a Comment for this instruction (optional)'),
-        dcc.Input(id='comment',type='text',debounce=True,value=""),
+        dcc.Input(id='comment',type='text',value=""),
         html.Br(),
 
         dcc.Button('Add Instruction to the Script',id='CMDADD',className='button'),

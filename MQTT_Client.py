@@ -26,8 +26,9 @@ class mqtt_client():
         self.time_of_last_status = 'No Data Recieved Yet'
         self.counter = 0
 
-        self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+        self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index'])
         self.time_of_last_script_receipt = datetime.datetime.now()
+        self.last_index = 0
 
     def on_message(self,client,userdata,msg):
         self.data[msg.topic] = {}
@@ -50,16 +51,15 @@ class mqtt_client():
 
             self.scriptsend_payload = json.loads(msg.payload.decode('utf-8'))
 
-            if self.scriptsend_payload['index']+1 < len(self.script):
-                print(f"Current Index +1: {self.scriptsend_payload['index']+1}")
-                print(f"length of script so far: {len(self.script)}")
-                self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+            self.script.loc[self.scriptsend_payload['index']] = list(self.scriptsend_payload.values())
 
-            script_sans_index = self.scriptsend_payload.copy()
-            del script_sans_index['index']
+            self.script = self.script.sort_values('index')
 
-            self.script.loc[self.scriptsend_payload['index']] = list(script_sans_index.values())
+            if self.scriptsend_payload['index'] == 0:
+                size_diff = len(self.script) - (self.last_index + 1)
+                self.script.drop(self.script.tail(size_diff).index,inplace=True)
 
+            self.last_index = self.scriptsend_payload['index']
 
-
-
+        # if msg.topic == 'MOTION/SCRIPTNAMES':
+            
