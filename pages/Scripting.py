@@ -99,8 +99,8 @@ layout = html.Div(children=[
             dcc.Dropdown(id="script-list"),
             html.Br(),
             html.Label('Currently Selected Script:',id='active-script-1'),
-            dcc.Button('Set Selected Script as Active',id='CMDSCRIPTREAD',className='button'),
-            dcc.Button('View Contents of Selected Script',id='CMDREQSCRIPT',className='button'),
+            dcc.Button('View Contents of Active Script',id='CMDSCRIPTREAD',className='button'),
+            # dcc.Button('View Contents of Selected Script',id='CMDREQSCRIPT',className='button'),
             dcc.Button('Delete Currently Selected Script',id='CMDSCRIPTDEL',className='button')
         ],className='divBorder'),
         html.Div(children=[
@@ -217,7 +217,10 @@ def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,set
 @callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):
     new_command = beckhoff_plc.data['MOTION/INSTR_ECHO']
-    del new_command['timestamp']
+    try:
+        del new_command['timestamp']
+    except:
+        pass
     # Send the json array with the new command 
     beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_command))
 
@@ -272,9 +275,9 @@ def loop(val):
           Input('CMDSCRIPTWRITE','n_clicks'),
           Input("CMDSCRIPTDEL",'n_clicks'),
           Input("CMDSCRIPTREAD","n_clicks"),
-          Input("CMDREQSCRIPT","n_clicks"),
+        #   Input("CMDREQSCRIPT","n_clicks"),
           Input("CMDRUN","n_clicks"))
-def delete_task(bt1,bt2,bt3,bt4,bt5,bt6,bt7,bt8):
+def delete_task(bt1,bt2,bt3,bt4,bt5,bt6,bt7):
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
@@ -325,7 +328,25 @@ def update_active_basin(n):
            safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Loop_Int'],"#DA2020","#9B9B9B"),\
            button_text,\
            safl.update_indicator_color(beckhoff_plc.data['MOTION/STATUS']['Run_Int'],"#DA2020","#9B9B9B")
-           
+
+@callback(Output('script-list','options'),
+          Input('interval-timer','n_intervals'))
+def update_files(n):
+    return beckhoff_plc.files
+
+@callback(Input('script-list','value'))
+def select_script(val):
+    print(f"Selected Scrirpt: {val}")
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['SCRIPTNAME'] = val
+
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
 
 @callback(Output('script-inprogress','data'),
           Input('interval-timer','n_intervals'))
@@ -334,3 +355,11 @@ def update_script_inprogress_table(n):
         return beckhoff_plc.script.to_dict('records')
     except:
         no_update
+
+@callback(Output('CMDRUN','children'),
+          Input('interval-timer','n_intervals'))
+def update_run_script_button(n):
+    if beckhoff_plc.data['MOTION/STATUS']['Run_Int']:
+        return "Abort Script Run"
+    else:
+        return "Run Active Script"

@@ -30,6 +30,8 @@ class mqtt_client():
         self.time_of_last_script_receipt = datetime.datetime.now()
         self.last_index = 0
 
+        self.files = []
+
     def on_message(self,client,userdata,msg):
         self.data[msg.topic] = {}
         # print(msg.topic)
@@ -44,7 +46,7 @@ class mqtt_client():
         time_since_last_scriptsend = datetime.datetime.now() - self.time_of_last_script_receipt
 
         if time_since_last_scriptsend.seconds >=1: # if its been more than 1 second since we have received 
-            self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment'])
+            self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index'])
 
         if msg.topic == 'MOTION/SCRIPTSEND':
             self.time_of_last_script_receipt = datetime.datetime.now()
@@ -61,5 +63,15 @@ class mqtt_client():
 
             self.last_index = self.scriptsend_payload['index']
 
-        # if msg.topic == 'MOTION/SCRIPTNAMES':
+        if msg.topic == 'MOTION/SCRIPTNAMES':
+            payload = json.loads(msg.payload.decode('utf-8'))
+
+            if payload['start'] == True:
+                self.files = []
+                self.files.append(payload['payload'])
+            else:
+                self.files.append(payload['payload'])
+
+            print(f"Files received: {self.files}")
+
             

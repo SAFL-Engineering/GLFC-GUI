@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output, ALL, ctx, clientside_callback,callback
+from dash import dcc, html, Input, Output, ALL, ctx, clientside_callback,callback,no_update
 from Beckhoff_PLC import beckhoff_plc
 import json
 import SAFL_Dash_Toolbox as safl
@@ -16,9 +16,22 @@ def create_momentary_button(index, label):
             style={'margin': '10px', 'padding': '10px 20px', 'user-select': 'none'}
         ),
         dcc.Store(id={'type': 'button-state', 'index': index}, data="released"),
-    ], style={'display': 'inline-block'})
+    ], style={'display': 'inline-block'},id=label)
+
+def add_warning_to_button(index,label):
+    return html.Div([
+        dcc.ConfirmDialogProvider([
+        html.Button(
+            label, 
+            id={'type': 'momentary-btn', 'index': index}, 
+            className="momentary-btn",
+            style={'margin': '10px', 'padding': '10px 20px', 'user-select': 'none'}
+            )]),
+            dcc.Store(id={'type': 'button-state', 'index': index}, data="released"),
+        ], style={'display': 'inline-block'},id=label)
 
 layout = html.Div([
+    html.Div(children=[],id='confirm-dialog'),
     html.Div(children=[
         html.H3("Manual Jog Control"),
         html.Div(id='which-button-is-pressed', children="Stopped")
@@ -196,3 +209,14 @@ def set_basin(n):
 
     new_ctr_struct['BASINCTR'] = command
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+
+@callback(Output('confirm-dialog','children'),
+          Input('interval-timer','n_intervals'))
+def add_confirm_dialog(n):
+    if beckhoff_plc.data['MOTION/STATUS']['xCoupled']:
+        print('motors are coupled')
+        return []
+    else:
+        print('motors are un-coupled')
+        return dcc.ConfirmDialog('Warning! X motors are not coupled. Proceed with caution.')
