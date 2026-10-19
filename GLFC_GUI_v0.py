@@ -50,7 +50,8 @@ app.layout = html.Div(children= [
     html.Br(),
     safl.value_display('Motion Status',id='pause-status'),
     html.Div(children=[
-        dcc.Button(children=['Pause'],id='stop-start',className='button')
+        dcc.Button(children=['Pause'],id='stop-start',className='button'),
+        dcc.Button(children=['Cancel'],id='cancel',className='button')
     ],className='divJogButtons'),
     html.Br(),
     html.Div(children=[
@@ -150,6 +151,19 @@ def pause_unpause(n):
         pass
 
     new_ctr_struct['STOP'] = True
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+@callback(Input('cancel','n_clicks'))
+def send_cancel(n):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    new_ctr_struct['CANCEL'] = True
 
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))

@@ -10,7 +10,7 @@ def create_momentary_button(index, label):
     # (Same helper function as before)
     return html.Div([
         html.Button(
-            label, 
+            label,
             id={'type': 'momentary-btn', 'index': index}, 
             className="momentary-btn",
             style={'margin': '10px', 'padding': '10px 20px', 'user-select': 'none'}
@@ -42,6 +42,11 @@ layout = html.Div([
     html.Div(children=[
         dcc.Button(children='Toggle Selected Basin',id='jog-page-basin-toggle',className='button')
     ],style={'display':'flex','justifyContent':'center'}),
+    html.Div(children=[
+        html.Label('X-motors are NOT Coupled. Click Below to allow jogging on enclosure side x motor only.'),
+        dcc.Checklist(options=['Allow X motion on enclosure side motor only'],id='x-override')
+        ], id='x-motors-coupled',
+        style={'display':'flex','justifyContent':'center'}),
     html.Div(children = [
     create_momentary_button(1, "Jog X-"),
     html.Label(id='current-x-pos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px'}),
@@ -211,12 +216,22 @@ def set_basin(n):
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
 
-@callback(Output('confirm-dialog','children'),
-          Input('interval-timer','n_intervals'))
-def add_confirm_dialog(n):
+@callback(Output({'type': 'momentary-btn', 'index': 2},'disabled'),
+          Output({'type': 'momentary-btn', 'index': 1},'disabled'),
+        #   Output('x-motors-coupled','children'),
+          Output('x-motors-coupled','style'),
+          Input('interval-timer','n_intervals'),
+          Input('x-override','value'))
+def add_confirm_dialog(n,override):
+    print(override)
     if beckhoff_plc.data['MOTION/STATUS']['xCoupled']:
-        print('motors are coupled')
-        return []
+        # print('motors are coupled')
+        return False,False,{'display':'none'}
+
+    elif override==['Allow X motion on enclosure side motor only']: 
+        return False,False,{'display':'flex','justifyContent':'center','flexDirection':'column','alignItems': 'center'}
+    
     else:
-        print('motors are un-coupled')
-        return dcc.ConfirmDialog('Warning! X motors are not coupled. Proceed with caution.')
+        # print('motors are un-coupled')
+
+        return True,True,{'display':'flex','justifyContent':'center','flexDirection':'column','alignItems': 'center'}
