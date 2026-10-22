@@ -67,6 +67,30 @@ layout = html.Div([
     safl.value_display(title='Z Range',            id='z-hardstops'),
     html.Br(),
     html.Div(children=[
+        html.Div(children=[
+            html.Label('Drive X to Position:',style={'minWidth':100}),
+            html.Div(children=[
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSX_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSX']),
+            ],style={'display':'flex','minWidth':200}),
+            dcc.Button('Go!',id='Go-X')
+        ],className='divJogButtons'),
+        html.Div(children=[
+                    html.Label('Drive Y to Position:',style={'minWidth':100}),
+                    html.Div(children=[
+                        dcc.Input(type='number',debounce=False,step=0.1,id='POSY_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSY']),
+                    ],style={'display':'flex','minWidth':200}),
+                    dcc.Button('Go!',id='Go-Y')
+                ],className='divJogButtons'),
+        html.Div(children=[
+                    html.Label('Drive Z to Position:',style={'minWidth':100}),
+                    html.Div(children=[
+                        dcc.Input(type='number',debounce=False,step=0.1,id='POSZ_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']),
+                    ],style={'display':'flex','minWidth':200}),
+                    dcc.Button('Go!',id='Go-Z')
+                ],className='divJogButtons')
+    ],style={'display':'flex','flexDirection':'column','justifyContent':'center'}),
+
+    html.Div(children=[
         dcc.Graph(id='current-xy-pos',className='plots')
     ])
 ],className='divOverall')
@@ -196,9 +220,9 @@ def update_position_displays(n):
     return  f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.2f} mm",\
             f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.2f} mm",\
             f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.2f} mm",\
-            f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]:.1f} mm",\
-            f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]:.1f} mm",\
-            f"{0} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][2]:.1f} mm",\
+            f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][0]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]:.1f} mm",\
+            f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][1]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]:.1f} mm",\
+            f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][2]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][2]:.1f} mm",\
             basin
 
 @callback(Input("jog-page-basin-toggle","n_clicks"))
@@ -223,7 +247,7 @@ def set_basin(n):
           Input('interval-timer','n_intervals'),
           Input('x-override','value'))
 def add_confirm_dialog(n,override):
-    print(override)
+    # print(override)
     if beckhoff_plc.data['MOTION/STATUS']['xCoupled']:
         # print('motors are coupled')
         return False,False,{'display':'none'}
@@ -235,3 +259,66 @@ def add_confirm_dialog(n,override):
         # print('motors are un-coupled')
 
         return True,True,{'display':'flex','justifyContent':'center','flexDirection':'column','alignItems': 'center'}
+
+@callback(Input('POSX_move','value'),
+          Input('POSY_move','value'),
+          Input('POSZ_move','value'))
+def set_move_target(x,y,z):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+    if x is not None:
+        new_ctr_struct['POSX'] = float(x)
+    if y is not None:
+        new_ctr_struct['POSY'] = float(y)
+    if z is not None:
+        new_ctr_struct['POSZ'] = float(z)
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+@callback(Input('Go-X','n_clicks'),
+          Input('Go-Y','n_clicks'),
+          Input('Go-Z','n_clicks'))
+def start_move(nx,ny,nz):
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    which_button = dash.ctx.triggered_id
+    if which_button == 'Go-X':
+        new_ctr_struct['MOVEX'] = True
+    elif which_button == 'Go-Y':
+        new_ctr_struct['MOVEY'] = True
+    elif which_button == 'Go-Z':
+        new_ctr_struct['MOVEZ'] = True
+
+    # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
+    beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+
+@callback(Output('Go-X','disabled'),
+          Output('Go-Y','disabled'),
+          Output('Go-Z','disabled'),
+          Input('interval-timer','n_intervals'))
+def disable_buttons(n):
+    if beckhoff_plc.data['MOTION/STATUS']['MoveActive']:
+        return True,True,True
+    else:
+        return False,False,False
+
+@callback(Output('POSX_move','min'),
+          Output('POSX_move','max'),
+          Output('POSY_move','min'),
+          Output('POSY_move','max'),
+          Output('POSZ_move','min'),
+          Output('POSZ_move','max'),
+          Input('interval-timer','n_intervals'))
+def update_minmax(n):
+    mins =  beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS']
+    maxs = beckhoff_plc.data['MOTION/STATUS']['HardStopLocations']
+
+    return mins[0],beckhoff_plc.data['MOTION/STATUS']['basinxMax'],mins[1],beckhoff_plc.data['MOTION/STATUS']['basinyMax'],mins[2],maxs[2]
