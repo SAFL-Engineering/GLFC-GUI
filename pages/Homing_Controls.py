@@ -27,6 +27,7 @@ else:
 
 
 layout = html.Div(children=[
+        dcc.Location(id='homing-url-trigger',refresh=False),
         html.Div(children=[
             html.Div(children=[
             safl.indicator_display(title='Axes Enabled',id='enabled-status'),
@@ -51,17 +52,17 @@ layout = html.Div(children=[
             dcc.Button(children=['Couple/Decouple X Motors'],id='CMDCOUPLE'),
             safl.indicator_display(title='X Motors Coupled',id='x-coupled-bool'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=False,step=0.1,id='POSX',value=0,persistence=True,persistence_type='local'),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSX',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],persistence=True,persistence_type='local'),
                 html.Label(id='xpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set X Position",id='SETXPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=False,step=0.1,id='POSY',value=0,persistence=True,persistence_type='local'),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSY',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],persistence=True,persistence_type='local'),
                 html.Label(id='ypos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Y Position",id='SETYPOS',className='button')
             ],className='divHorizontal'),
             html.Div(children=[
-                dcc.Input(type='number',debounce=False,step=0.1,id='POSZ',value=0,persistence=True,persistence_type='local'),
+                dcc.Input(type='number',debounce=False,step=0.1,id='POSZ',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ'],persistence=True,persistence_type='local'),
                 html.Label(id='zpos',style={'width':'150px','alignContent':'center','textAlign':'center','backgroundColor':'black','color':"#00FF15",'fontFamily':'Consolas','height':'40px','margin':'3px'}),
                 dcc.Button("Set Z Position",id='SETZPOS',className='button')
             ],className='divHorizontal')
@@ -142,9 +143,10 @@ def actions(bt1,bt2,bt3,bt4,bt5):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-@callback(Output('POSX','value'),
-          Output('POSY','value'),
-          Output('POSZ','value'),
+@callback(
+#           Output('POSX','value'),
+#           Output('POSY','value'),
+#           Output('POSZ','value'),
           Input('POSX','value'),
           Input('POSY','value'),
           Input('POSZ','value'),
@@ -175,16 +177,16 @@ def update_xyz_set(x,y,z,setx,sety,setz):
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
-    return x,y,z
+    # return x,y,z
 
 @callback(Output('xpos','children'),
           Output('ypos','children'),
           Output('zpos','children'),
           Input('interval-timer','n_intervals'))
 def update(n):
-    return f'{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:.1f}',\
-           f'{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:.1f}',\
-           f'{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:.1f}'
+    return f'{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.1f}',\
+           f'{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.1f}',\
+           f'{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.1f}'
 
 
 @callback(Output('enabled-status','color'),
@@ -203,7 +205,16 @@ def enable_disable_axes(n):
     new_ctr_struct['AXESEN']=True      
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
 
-    
-
-
-    
+@callback(Output('POSX','value'),
+          Output('POSY','value'),
+          Output('POSZ','value'),
+          Input('homing-url-trigger','pathname'))
+def update_targets(path):
+    print(f"Pathname : {path}")
+    if path == '/homing-controls':
+        print('Updating Input Values')
+        return  beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],\
+                beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],\
+                beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
+    else:
+        return no_update

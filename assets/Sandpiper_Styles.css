@@ -95,6 +95,8 @@
   /* height:max-content; */
   /* border:1px solid #ff0000; */
   align-Items:top;
+  margin:5px;
+  min-width: 150px;
 }
 
 .divJogButtons {

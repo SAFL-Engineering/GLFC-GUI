@@ -31,6 +31,7 @@ def add_warning_to_button(index,label):
         ], style={'display': 'inline-block'},id=label)
 
 layout = html.Div([
+    dcc.Location(id='url-trigger', refresh=False),
     html.Div(children=[],id='confirm-dialog'),
     html.Div(children=[
         html.H3("Manual Jog Control"),
@@ -71,21 +72,24 @@ layout = html.Div([
             html.Label('Drive X to Position:',style={'minWidth':100}),
             html.Div(children=[
                 dcc.Input(type='number',debounce=False,step=0.1,id='POSX_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSX']),
-            ],style={'display':'flex','minWidth':200}),
+            ],style={'display':'flex','minWidth':200,'margin':'5px'}),
+            html.Div(id='X-target',className='divHorizontal'),
             dcc.Button('Go!',id='Go-X')
         ],className='divJogButtons'),
         html.Div(children=[
                     html.Label('Drive Y to Position:',style={'minWidth':100}),
                     html.Div(children=[
                         dcc.Input(type='number',debounce=False,step=0.1,id='POSY_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSY']),
-                    ],style={'display':'flex','minWidth':200}),
+                    ],style={'display':'flex','minWidth':200,'margin':'5px'}),
+                    html.Div(id='Y-target',className='divHorizontal'),
                     dcc.Button('Go!',id='Go-Y')
                 ],className='divJogButtons'),
         html.Div(children=[
                     html.Label('Drive Z to Position:',style={'minWidth':100}),
                     html.Div(children=[
                         dcc.Input(type='number',debounce=False,step=0.1,id='POSZ_move',value=beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']),
-                    ],style={'display':'flex','minWidth':200}),
+                    ],style={'display':'flex','minWidth':200,'margin':'5px'}),
+                    html.Div(id='Z-target',className='divHorizontal'),
                     dcc.Button('Go!',id='Go-Z')
                 ],className='divJogButtons')
     ],style={'display':'flex','flexDirection':'column','justifyContent':'center'}),
@@ -216,12 +220,28 @@ def update_position_displays(n):
         basin= "B"
     else: 
         basin = "Unknown"
+
+    if f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.1f}" == "-999,999.0":
+        x_pos = "Outside Basin Extents"
+    else:
+        x_pos = f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.1f} mm"
+
+    if f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.1f}" == "-999,999.0":
+        y_pos = "Outside Basin Extents"
+    else:
+        y_pos = f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.1f} mm"
+
+    if f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.1f}" == "-999,999.0":
+        z_pos = "Outside Basin Extents"
+    else:
+        z_pos = f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.1f} mm"
     
-    return  f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:,.2f} mm",\
-            f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:,.2f} mm",\
-            f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:,.2f} mm",\
+    
+    return  x_pos,\
+            y_pos,\
+            z_pos,\
             f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][0]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][0]:.1f} mm",\
-            f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][1]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][1]:.1f} mm",\
+            f"{beckhoff_plc.data['MOTION/STATUS']['basinyMin']:.1f} to {beckhoff_plc.data['MOTION/STATUS']['basinyMax']:.1f} mm",\
             f"{beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS'][2]:.1f} to {beckhoff_plc.data['MOTION/STATUS']["HardStopLocations"][2]:.1f} mm",\
             basin
 
@@ -290,11 +310,12 @@ def start_move(nx,ny,nz):
         pass
 
     which_button = dash.ctx.triggered_id
-    if which_button == 'Go-X':
-        new_ctr_struct['MOVEX'] = True
-    elif which_button == 'Go-Y':
+    # Check that the target position is not the current position.  If it is, no move will occur when the button is pressed, BUT moition will occur as soon as a new target is entered.
+    if which_button == 'Go-X' and f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSX']:.1f}" != f"{beckhoff_plc.data['MOTION/STATUS']['xPosOut']:.1f}":
+        new_ctr_struct['MOVEX'] = True 
+    elif which_button == 'Go-Y' and f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSY']:.1f}" != f"{beckhoff_plc.data['MOTION/STATUS']['yPosOut']:.1f}":
         new_ctr_struct['MOVEY'] = True
-    elif which_button == 'Go-Z':
+    elif which_button == 'Go-Z' and f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']:.1f}" != f"{beckhoff_plc.data['MOTION/STATUS']['zPosOut']:.1f}":
         new_ctr_struct['MOVEZ'] = True
 
     # Publicsh the JSON to the "MOTION/CTR" topic over MQTT
@@ -305,7 +326,13 @@ def start_move(nx,ny,nz):
           Output('Go-Z','disabled'),
           Input('interval-timer','n_intervals'))
 def disable_buttons(n):
-    if beckhoff_plc.data['MOTION/STATUS']['MoveActive']:
+
+    if beckhoff_plc.data['MOTION/STATUS']['xPosOut'] == -999999 or beckhoff_plc.data['MOTION/STATUS']['yPosOut'] == -999999 or beckhoff_plc.data['MOTION/STATUS']['zPosOut'] == -999999:
+        outside_basin = True
+    else:
+        outside_basin = False
+
+    if beckhoff_plc.data['MOTION/STATUS']['MoveActive'] or outside_basin:
         return True,True,True
     else:
         return False,False,False
@@ -316,9 +343,41 @@ def disable_buttons(n):
           Output('POSY_move','max'),
           Output('POSZ_move','min'),
           Output('POSZ_move','max'),
+          Output('X-target','children'),
+          Output('Y-target','children'),
+          Output('Z-target','children'),
           Input('interval-timer','n_intervals'))
 def update_minmax(n):
     mins =  beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS']
     maxs = beckhoff_plc.data['MOTION/STATUS']['HardStopLocations']
 
-    return mins[0],beckhoff_plc.data['MOTION/STATUS']['basinxMax'],mins[1],beckhoff_plc.data['MOTION/STATUS']['basinyMax'],mins[2],maxs[2]
+    x_target_div = [html.Label('X Target: ',style={'padding':'2px'}),
+                    html.Label(f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSX']:,.1f} mm",style={'padding':'2px'})]
+    y_target_div = [html.Label('Y Target: ',style={'padding':'2px'}),
+                        html.Label(f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSY']:,.1f} mm",style={'padding':'2px'})]
+    z_target_div = [html.Label('Z Target: ',style={'padding':'2px'}),
+                        html.Label(f"{beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']:,.1f} mm",style={'padding':'2px'})]
+
+    return mins[0]+1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinxMax']-1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMin']+1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMax']-1,\
+            mins[2]+1,\
+            maxs[2]-1,\
+            x_target_div,\
+            y_target_div,\
+            z_target_div
+
+@callback(Output('POSX_move','value'),
+          Output('POSY_move','value'),
+          Output('POSZ_move','value'),
+          Input('url-trigger','pathname'))
+def update_targets(path):
+    print(f"Pathname : {path}")
+    if path == '/jog-controls':
+        print('Updating Input Values')
+        return  beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],\
+                beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],\
+                beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
+    else:
+        return no_update
