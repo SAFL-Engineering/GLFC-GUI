@@ -37,35 +37,96 @@ def ensure_client_id():
     if "client_id" not in flask.session:
         flask.session["client_id"] = str(uuid.uuid4())
 
+## Code for preventing more than one connection to the GUI. 
+ACTIVE_SESSION = {
+    "session_id": None,
+    "last_seen": 0
+}
+TIMEOUT_SECONDS = 10  # Seconds before an inactive connection is dropped
+
+
+
 app.layout = html.Div(children= [
-    dcc.Interval(id='interval-timer',interval=update_interval,n_intervals=0),
-    dcc.Store(id='stored_variables',data={'last-loop-time':datetime.datetime.now()}),
-    html.Img(src=dash.get_asset_url("FishPass_Banner.jpeg"),style={"display":"block","marginLeft":"auto","marginRight":"auto","width":"30%"}),
-    html.H1("Data Carriage Control Interface",style={'textAlign':'center'}),
-    safl.value_display(title="Connected Users",id='connected-users-label'),
-    safl.value_display(title='Time since last Message',           id='last-message-time'    ),
-    safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
-    html.Br(),
-    safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
-    html.Br(),
-    safl.value_display('Motion Status',id='pause-status'),
     html.Div(children=[
-        dcc.Button(children=['Pause'],id='stop-start',className='button'),
-        dcc.Button(children=['Cancel'],id='cancel',className='button')
-    ],className='divJogButtons'),
-    html.Br(),
+        dcc.Store(id="session-store",storage_type="session"),
+        dcc.Interval(id="heartbeat-interval",interval=3000,n_intervals=0),
+        dcc.Interval(id='interval-timer',interval=update_interval,n_intervals=0),
+        dcc.Store(id='stored_variables',data={'last-loop-time':datetime.datetime.now()}),
+        html.Img(src=dash.get_asset_url("FishPass_Banner.jpeg"),style={"display":"block","marginLeft":"auto","marginRight":"auto","width":"30%"}),
+        html.H1("Data Carriage Control Interface",style={'textAlign':'center'}),
+        html.Div(id='app-content')]),
     html.Div(children=[
-        html.H3('Select a View',style={'textAlign':'center'}),
-        html.Div(children=[
-            html.Div(
-                dcc.Link(
-                    dcc.Button(f"{page['name']}",className='custom-btn') ,href=page["relative_path"]
-                    )
-            ) for page in dash.page_registry.values()
-        ],className='divHorizontal'),
+        safl.value_display(title="Connected Users",id='connected-users-label'),
+        safl.value_display(title='Time since last Message',           id='last-message-time'    ),
+        safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
         html.Br(),
-        dash.page_container])
+        safl.value_display(title='Currently Selected Basin',id='mainpage-selected-basin'),
+        html.Br(),
+        safl.value_display('Motion Status',id='pause-status'),
+        html.Div(children=[
+            dcc.Button(children=['Pause'],id='stop-start',className='button'),
+            dcc.Button(children=['Cancel'],id='cancel',className='button')
+        ],className='divJogButtons'),
+        html.Br(),
+        html.Div(children=[
+            html.H3('Select a View',style={'textAlign':'center'}),
+            html.Div(children=[
+                html.Div(
+                    dcc.Link(
+                        dcc.Button(f"{page['name']}",className='custom-btn') ,href=page["relative_path"]
+                        )
+                ) for page in dash.page_registry.values()
+            ],className='divHorizontal'),
+            html.Br(),
+            dash.page_container])],id='main_ui')
 ],className='divOverall')
+
+@app.callback(
+    Output("app-content", "children"),
+    Output("session-store", "data"),
+    Output('main_ui','style'),
+    Input("heartbeat-interval", "n_intervals"),
+    State("session-store", "data")
+)
+def manage_single_session(n, store_data):
+    current_time = time.time()
+    
+    # Ensure client has a persistent UUID for this tab/session
+    session_id = store_data.get("id") if store_data else str(uuid.uuid4())
+    
+    # Check if existing lock expired
+    lock_is_active = (current_time - ACTIVE_SESSION["last_seen"]) < TIMEOUT_SECONDS
+    
+    # Grant access if there is no lock, or lock is held by the same session ID
+    if not lock_is_active or ACTIVE_SESSION["session_id"] == session_id:
+        ACTIVE_SESSION["session_id"] = session_id
+        ACTIVE_SESSION["last_seen"] = current_time
+        
+        # Render actual dashboard content
+        main_ui = html.Div([
+            html.H2("You are the only connected User")        
+        ])
+        return main_ui, {"id": session_id},{'visibility':'visible'}
+
+    # Reject connection if another device/browser holds the lock
+    warning_ui = html.Div(
+        style={
+            "textAlign": "center",
+            "marginTop": "100px",
+            "color": "#721c24",
+            "backgroundColor": "#f8d7da",
+            "padding": "20px",
+            "borderRadius": "8px",
+            "maxWidth": "500px",
+            "margin": "100px auto"
+        },
+        children=[
+            html.H3("Access Denied"),
+            html.P("Another user or browser session is currently connected to this app."),
+            html.P("Please wait for them to disconnect or close their browser tab.")
+        ]
+    )
+    return warning_ui, {"id": session_id},{'visibility':'hidden'}
 
 
 

@@ -26,7 +26,7 @@ class mqtt_client():
         self.time_of_last_status = 'No Data Recieved Yet'
         self.counter = 0
 
-        self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index'])
+        self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index','scriptname'])
         self.time_of_last_script_receipt = datetime.datetime.now()
         self.last_index = 0
 
@@ -46,7 +46,7 @@ class mqtt_client():
         time_since_last_scriptsend = datetime.datetime.now() - self.time_of_last_script_receipt
 
         if time_since_last_scriptsend.seconds >=1: # if its been more than 1 second since we have received 
-            self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index'])
+            self.script = pd.DataFrame(columns=['MotionCommand','SetXPosition','SetXVelocity','SetXAccel','SetYPosition','SetYVelocity','SetYAccel','SetZPosition','SetZVelocity','PauseTime','Comment','index','scriptname'])
 
         if msg.topic == 'MOTION/SCRIPTSEND':
             self.time_of_last_script_receipt = datetime.datetime.now()

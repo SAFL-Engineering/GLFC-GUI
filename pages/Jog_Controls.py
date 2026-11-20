@@ -373,9 +373,9 @@ def update_minmax(n):
           Output('POSZ_move','value'),
           Input('url-trigger','pathname'))
 def update_targets(path):
-    print(f"Pathname : {path}")
+    # print(f"Pathname : {path}")
     if path == '/jog-controls':
-        print('Updating Input Values')
+        # print('Updating Input Values')
         return  beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],\
                 beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],\
                 beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
