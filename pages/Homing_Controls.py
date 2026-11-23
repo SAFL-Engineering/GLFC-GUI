@@ -159,10 +159,12 @@ def update_xyz_set(x,y,z,setx,sety,setz):
         del new_ctr_struct['timestamp']
     except:
         pass
-
-    new_ctr_struct['POSX'] = float(x)
-    new_ctr_struct['POSY'] = float(y)
-    new_ctr_struct['POSZ'] = float(z)
+    if x is not None:
+        new_ctr_struct['POSX'] = float(x)
+    if y is not None:
+        new_ctr_struct['POSY'] = float(y)
+    if z is not None:
+        new_ctr_struct['POSZ'] = float(z)
 
     which_button = dash.ctx.triggered_id
     if which_button == 'SETXPOS':
@@ -210,11 +212,29 @@ def enable_disable_axes(n):
           Output('POSZ','value'),
           Input('homing-url-trigger','pathname'))
 def update_targets(path):
-    print(f"Pathname : {path}")
+    # print(f"Pathname : {path}")
     if path == '/homing-controls':
-        print('Updating Input Values')
+        # print('Updating Input Values')
         return  beckhoff_plc.data['MOTION/CTR_ECHO']['POSX'],\
                 beckhoff_plc.data['MOTION/CTR_ECHO']['POSY'],\
                 beckhoff_plc.data['MOTION/CTR_ECHO']['POSZ']
     else:
         return no_update
+
+@callback(Output('POSX','min'),
+          Output('POSX','max'),
+          Output('POSY','min'),
+          Output('POSY','max'),
+          Output('POSZ','min'),
+          Output('POSZ','max'),
+          Input('interval-timer','n_intervals'))
+def update_minmax(n):
+    mins =  beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS']
+    maxs = beckhoff_plc.data['MOTION/STATUS']['HardStopLocations']
+
+    return  mins[0],\
+            beckhoff_plc.data['MOTION/STATUS']['basinxMax'],\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMin'],\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMax'],\
+            mins[2],\
+            maxs[2]

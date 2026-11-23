@@ -48,7 +48,7 @@ layout = html.Div(children=[
         dcc.Button(id='BASINCTR',children='Toggle Selected Basin',persistence=True,persistence_type='local'),
         html.Br(),
         html.Label('Select a Command Type:'),
-        dcc.Dropdown(options=['Null Instruction','Pause and Wait for Button Press','Go to Absolute Position','Move Relative Distance'],value='Go to Absolute Position',id='motion-command'),
+        dcc.Dropdown(options=['Null Instruction','Pause and Wait for Button Press','Go to Absolute Position','Move Relative Distance','Wait Time'],value='Go to Absolute Position',id='motion-command'),
 
         html.Div(children=[
             html.Div(children=[
@@ -77,7 +77,7 @@ layout = html.Div(children=[
                 dcc.Input(id='setzvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetZVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
-        html.Label('Set Pause Time Before Next Move (milliseconds):'),
+        html.Label('Set Wait Time Before Next Move (milliseconds):'),
         dcc.Input(id='setpause',type='number',debounce=True,step=1,min=0,value=0),
 
         html.Label('Add a Comment for this instruction (optional)'),
@@ -171,7 +171,14 @@ def update_script_name(value):
     beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json_ctr)
 
 
-@callback(Input('motion-command','value'),
+@callback(Output('setxpos','disabled'),
+          Output('setypos','disabled'),
+          Output('setzpos','disabled'),
+          Output('setxvel','disabled'),
+          Output('setyvel','disabled'),
+          Output('setzvel','disabled'),
+          Output('setpause','disabled'),
+          Input('motion-command','value'),
           Input('setxpos','value'),
           Input('setxvel','value'),
           Input('setypos','value'),
@@ -191,12 +198,20 @@ def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,set
 
     if motion_command=='Pause and Wait for Button Press':
         command = 1
+        disable_array = [True,True,True,True,True,True,True]
     elif motion_command=='Go to Absolute Position':
         command = 2
+        disable_array = [False,False,False,False,False,False,True]
     elif motion_command=='Move Relative Distance':
         command = 3
+        disable_array = [False,False,False,False,False,False,True]
+    elif motion_command == 'Wait Time':
+        command = 4
+        disable_array = [True,True,True,True,True,True,False]
     else:
         command = 0
+        disable_array = [True,True,True,True,True,True,True]
+
 
     new_instr_struct['MotionCommand'] = command
 
@@ -213,6 +228,8 @@ def add_instr(motion_command,setxpos,setxvel,setypos,setyvel,setzpos,setzvel,set
 
     # Send the json array with the new command 
     beckhoff_plc.client.publish(topic='MOTION/INSTR_BUFFER',payload=json.dumps(new_instr_struct))
+
+    return disable_array
 
 @callback(Input('CMDADD','n_clicks'))
 def send_CMDADD(n):

@@ -16,6 +16,10 @@ while not beckhoff_plc.data:
     i = i+1
     print(f'Waiting for an MQTT message to be received. Waited: {i} seconds')
     time.sleep(1)
+
+    if i > 30: #after 30 seconds stop trying to connect. 
+        print(f"No MQTT message has been received after 30 seconds. Aborting.")
+        break
 if i != 0:
     print('Message Received!')
 
@@ -55,7 +59,7 @@ app.layout = html.Div(children= [
         html.Img(src=dash.get_asset_url("FishPass_Banner.jpeg"),style={"display":"block","marginLeft":"auto","marginRight":"auto","width":"30%"}),
         html.H1("Data Carriage Control Interface",style={'textAlign':'center'}),
         html.Div(id='app-content')]),
-    html.Div(children=[
+    html.Div(id='main_ui',children=[
         safl.value_display(title="Connected Users",id='connected-users-label'),
         safl.value_display(title='Time since last Message',           id='last-message-time'    ),
         safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
@@ -78,13 +82,14 @@ app.layout = html.Div(children= [
                 ) for page in dash.page_registry.values()
             ],className='divHorizontal'),
             html.Br(),
-            dash.page_container])],id='main_ui')
+            dash.page_container])])
 ],className='divOverall')
 
 @app.callback(
     Output("app-content", "children"),
     Output("session-store", "data"),
     Output('main_ui','style'),
+    Output('interval-timer','disabled'), #disable the interval timer if the user is denied access so we don't bog down the system.
     Input("heartbeat-interval", "n_intervals"),
     State("session-store", "data")
 )
@@ -105,8 +110,8 @@ def manage_single_session(n, store_data):
         # Render actual dashboard content
         main_ui = html.Div([
             html.H2("You are the only connected User")        
-        ])
-        return main_ui, {"id": session_id},{'visibility':'visible'}
+        ],style={'display':'None'})
+        return main_ui, {"id": session_id},{'visibility':'visible'},False
 
     # Reject connection if another device/browser holds the lock
     warning_ui = html.Div(
@@ -123,10 +128,11 @@ def manage_single_session(n, store_data):
         children=[
             html.H3("Access Denied"),
             html.P("Another user or browser session is currently connected to this app."),
-            html.P("Please wait for them to disconnect or close their browser tab.")
+            html.P("Please wait for them to disconnect or close their browser tab."),
+            html.P("This browser tab will become active 10 seconds after the other session is closed.")
         ]
     )
-    return warning_ui, {"id": session_id},{'visibility':'hidden'}
+    return warning_ui, {"id": session_id},{'visibility':'hidden'},True
 
 
 
