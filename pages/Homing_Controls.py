@@ -106,14 +106,17 @@ def update_homing(n):
 def update_table(n):
     data = beckhoff_plc.data['MOTION/STATUS']
 
+    mins =  beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS']
+    maxs = beckhoff_plc.data['MOTION/STATUS']['HardStopLocations']
+
     if beckhoff_plc.data['MOTION/STATUS']['En_Int']:
         button_text =  'Disable Axes'
     else:
         button_text =  'Enable Axes'
     
-    return  [{'Axis':'X','Position':f"{data['xPosOut']:.1f} mm",'Basin Min':f"{data['basinxMin']:.1f} mm",'Velocity':f"{data['xVelOut']:.1f} mm/s",'Basin Max':f"{data['basinxMax']:.1f} mm"},\
+    return  [{'Axis':'X','Position':f"{data['xPosOut']:.1f} mm",'Basin Min':f"{mins[0]:.1f} mm",'Velocity':f"{data['xVelOut']:.1f} mm/s",'Basin Max':f"{data['basinxMax']:.1f} mm"},\
                         {'Axis':'Y','Position':f"{data['yPosOut']:.1f} mm",'Basin Min':f"{data['basinyMin']:.1f} mm",'Velocity':f"{data['yVelOut']:.1f} mm/s",'Basin Max':f"{data['basinyMax']:.1f} mm"},\
-                        {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{0:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{data['HardStopLocations'][2]:.1f} mm"}],\
+                        {'Axis':'Z','Position':f"{data['zPosOut']:.1f} mm",'Basin Min':f"{mins[2]:.1f} mm",'Velocity':f"{data['zVelOut']:.1f} mm/s",'Basin Max':f"{maxs[2]:.1f} mm"}],\
                         button_text
 
 

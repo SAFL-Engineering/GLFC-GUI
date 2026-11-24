@@ -11,7 +11,7 @@ dash.register_page(__name__)
 # time.sleep(1)
 try:
     script_table = html.Div(children=[
-        html.Label("Currently Active Script"),
+        html.Label("Currently Active Script",id='table-script'),
         html.Div([
                     dash_table.DataTable(columns = [{"name": i, "id": i} for i in beckhoff_plc.script.columns], 
                                                 data=beckhoff_plc.script.to_dict('records'), 
@@ -52,28 +52,28 @@ layout = html.Div(children=[
 
         html.Div(children=[
             html.Div(children=[
-                html.Label('Set X Target Position:'),
+                html.Label('Set X Target Position (mm):'),
                 dcc.Input(id='setxpos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetXPosition'])],style={'margin':'10px'}),
             html.Div(children=[
-                html.Label('Set X Target Velocity:'),
+                html.Label('Set X Target Velocity (mm/s):'),
                 dcc.Input(id='setxvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetXVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
         html.Div(children=[
             html.Div(children=[
-                html.Label('Set Y Target Position:'),
+                html.Label('Set Y Target Position (mm):'),
                 dcc.Input(id='setypos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetYPosition'])],style={'margin':'10px'}),
             html.Div(children=[
-                html.Label('Set Y Target Velocity:'),
+                html.Label('Set Y Target Velocity (mm/s):'),
                 dcc.Input(id='setyvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetYVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
         
         html.Div(children=[
             html.Div(children=[
-                html.Label('Set Z Target Position:'),
+                html.Label('Set Z Target Position (mm):'),
                 dcc.Input(id='setzpos',type='number',debounce=True,persistence=True,persistence_type='local',step=0.1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetZPosition'])],style={'margin':'10px'}),
             html.Div(children=[
-                html.Label('Set Z Target Velocity:'),
+                html.Label('Set Z Target Velocity (mm/s):'),
                 dcc.Input(id='setzvel',type='number',debounce=True,persistence=True,persistence_type='local',step=1,value = beckhoff_plc.data['MOTION/INSTR_ECHO']['SetZVelocity'],min=1,max=500)],style={'margin':'10px'}),
         ],className='divHorizontal'),
 
@@ -353,7 +353,8 @@ def update_files(n):
 
 @callback(Input('script-list','value'))
 def select_script(val):
-    print(f"Selected Scrirpt: {val}")
+    # print(f"Selected Scrirpt: {val}")
+
     new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
     try:
         del new_ctr_struct['timestamp']
@@ -380,3 +381,44 @@ def update_run_script_button(n):
         return "Abort Script Run"
     else:
         return "Run Active Script"
+
+@callback(Output('setxpos','min'),
+          Output('setxpos','max'),
+          Output('setypos','min'),
+          Output('setypos','max'),
+          Output('setzpos','min'),
+          Output('setzpos','max'),
+          Input('interval-timer','n_intervals'))
+def update_minmax(n):
+    mins =  beckhoff_plc.data['MOTION/STATUS']['CARRIAGE_OFFSETS']
+    maxs = beckhoff_plc.data['MOTION/STATUS']['HardStopLocations']
+
+    return mins[0]+1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinxMax']-1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMin']+1,\
+            beckhoff_plc.data['MOTION/STATUS']['basinyMax']-1,\
+            mins[2]+1,\
+            maxs[2]-1
+
+@callback(Output('table-script','children'),
+          Input('interval-timer','n_intervals')
+          )
+def check_if_script_is_current(n):
+    active_script_name = beckhoff_plc.data['MOTION/CTR_ECHO']['SCRIPTNAME']
+    table_script_name  = beckhoff_plc.data['MOTION/SCRIPTSEND']['scriptname']
+
+    # print(table_script_name)
+
+    new_ctr_struct = beckhoff_plc.data['MOTION/CTR_ECHO'].copy()
+    try:
+        del new_ctr_struct['timestamp']
+    except:
+        pass
+
+    
+    if active_script_name != table_script_name:
+        new_ctr_struct["CMDSCRIPTREAD"] = True        
+        beckhoff_plc.client.publish(topic='MOTION/CTR',payload=json.dumps(new_ctr_struct))
+        return 'WARNING! Script Displayed Below is not the Active Script that will Run'
+    else:
+        return active_script_name

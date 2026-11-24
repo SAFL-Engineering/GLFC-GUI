@@ -72,6 +72,6 @@ class mqtt_client():
             else:
                 self.files.append(payload['payload'])
 
-            print(f"Files received: {self.files}")
+            # print(f"Files received: {self.files}")
 
             

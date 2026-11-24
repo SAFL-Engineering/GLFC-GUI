@@ -36,10 +36,6 @@ app = Dash(name=__name__,use_pages=True)
 auth = dash_auth.BasicAuth(app,credentials)
 app.server.secret_key = token
 
-@app.server.before_request
-def ensure_client_id():
-    if "client_id" not in flask.session:
-        flask.session["client_id"] = str(uuid.uuid4())
 
 ## Code for preventing more than one connection to the GUI. 
 ACTIVE_SESSION = {
@@ -60,7 +56,7 @@ app.layout = html.Div(children= [
         html.H1("Data Carriage Control Interface",style={'textAlign':'center'}),
         html.Div(id='app-content')]),
     html.Div(id='main_ui',children=[
-        safl.value_display(title="Connected Users",id='connected-users-label'),
+        # safl.value_display(title="Connected Users",id='connected-users-label'),
         safl.value_display(title='Time since last Message',           id='last-message-time'    ),
         safl.value_display(title='HMI Loop time',id='hmi-loop-time'),
         html.Br(),
@@ -172,19 +168,6 @@ def update_hmi_loop_time(n,stored_data):
 
     return f'{datetime.datetime.now()-beckhoff_plc.time_of_last_message}',style,f'{dt_loop}',stored_data,pause_status
 
-@callback(Output('connected-users-label','children'),
-    Input("interval-timer","n_intervals"),
-    prevent_initial_call=True
-)
-def heartbeat(n):
-    session_id = flask.session.get("client_id")
-    # print(session_id)
-    active_clients[session_id] = time.time()
-
-    now = time.time()
-    connected_clients = len([t for t in active_clients.values() if now - t < 10])
-
-    return f'{connected_clients}'
 
 @callback(Output('mainpage-selected-basin','children'),
           Output('stop-start','children'),
